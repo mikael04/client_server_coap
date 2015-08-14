@@ -25,8 +25,9 @@
 	#define DEBUG_PRINT_HEADER 1
 	#define DEBUG_PRINT_TOKEN 1
 	#define DEBUG_PRINT_OPTION 1
-	#define DEBUG_PRINT_OPTION_M 1
+	#define DEBUG_PRINT_OPTION_M 0
 	#define DEBUG_PRINT_PAYLOAD 1
+	#define DEBUG_MONTA_OP 0
 
 	#define num_de_opcoes 30
 	#define MAX_OPTIONS 10
@@ -35,6 +36,8 @@
 	#define erro_argumento_token_invalido 11
 	#define erro_argumento_option_invalido 12
 	#define erro_argumento_payload_invalido 13
+	#define erro_argumento_mais_de_um_token 14
+	#define erro_argumento_mais_de_um_payload 15
 	#define erro_comando 20
 	#define erro_argumento_inv
 		
@@ -121,7 +124,16 @@
 			printf("buffer [%d] = 0x%02x\n", i, buffer[i]);
 		}
 	}
-	void monta_pkt (coap_packet_t *pkt, uint8_t *buf, coap_conts *cont1)
+	void printf_buffer_m(uint8_t *buffer)
+	{
+		int i;
+		for (i=0; i<strlen((char *)buffer); i++)
+		{
+			//if ()
+			printf("%02x  ", buffer[i]);
+		}
+	}
+	void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 	{
 		//uint8_t aux_header[4];
 		uint8_t *p = NULL;
@@ -142,13 +154,14 @@
 	    if (pkt->hdr.tkl == 0x00)
 	    {
 	    	printf("Não existe token\n");
-	    	printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
+	    	//printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
 	    }
 	    else
 	    {
-	    	printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
+	    	//printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
 	    	printf("Existe token\n");
 	    	memcpy(p, pkt->tok.p, pkt->hdr.tkl);
+	    	p = p+pkt->hdr.tkl;
 	    }
 	    //printf("p = %s\n", p);
 	    //printf("numopts = %d\n", (int)pkt->numopts);
@@ -178,6 +191,8 @@
 			printf("Conteudo de opts[%d]->num = %d\n", i, (int)*pkt->opts[i].num);
 			printf("Conteudo de opts[%d]->num = 0x%02x\n", i, *pkt->opts[i].num);
 			printf("Conteudo de opts[%d]->num = %s\n", i, pkt->opts[i].num);
+			printf("Conteudo de opts[%d]->buf.len = %d\n", i, pkt->opts[i].buf.len);
+			printf("Conteudo de opts[%d]->buf.p = %s\n", i, (char *) pkt->opts[i].buf.p);
 #endif
 			opt = (int)*pkt->opts[i].num;
 #if DEBUG && DEBUG_MONTA_OP			
@@ -198,8 +213,22 @@
 			p = p + pkt->opts[i].buf.len;
 #if DEBUG && DEBUG_MONTA_OP			
 			printf("saindo do for \n");
+			printf("Debug 1");
 #endif
 	    }
+	    //Payload
+#if DEBUG && DEBUG_MONTA_OP			
+			printf("Debug 1");
+#endif
+	    	*p++ = 0xFF;
+#if DEBUG && DEBUG_MONTA_OP			
+			printf("Debug 1");
+#endif
+	    	memcpy(p, pkt->payload.p, pkt->payload.len);
+#if DEBUG && DEBUG_MONTA_OP			
+			printf("Debug 1");
+#endif
+	    	p = p+pkt->payload.len;
 
 	}
 
@@ -218,13 +247,10 @@
 	#endif
 	}
 
-	void cria_pkt (coap_packet_t *pkt, coap_conts *cont1)
+	void cria_pkt (coap_packet_t *pkt)
 	{
 		monta_header (pkt);
 		pkt->numopts = 0;
-		cont1->cont_t = 0;
-		cont1->cont_op = 0;
-		cont1->cont_p = 0;
 	}
 	/*void add_token_null (coap_packet_t *pkt)
 	{
@@ -241,12 +267,13 @@
 
 	}
 	//void add_option (coap_packet_t *pkt, char *op_num, char *op_conteudo, int numopt, int *option_running_delta)
-	void add_option (coap_packet_t *pkt, int cont_aux, char *op_num, char *op_conteudo, int numopt, int *option_running_delta)
+	void add_option (coap_packet_t *pkt, int cont_aux, int *buf_aux_opt_n, char *op_conteudo, int numopt, int *option_running_delta)
 	{
-		char *end;
-		char aux[30] = "";
-		strncat (aux, op_conteudo, strlen(op_conteudo));
-		int num_op = strtol(op_num, &end, 0);
+		//char *end2 = NULL;
+		//char aux[30] = "";
+		//strncat (aux, op_conteudo, strlen(op_conteudo));
+		//int num_op = strtol(op_num, &end, 0);
+		int num_op = *buf_aux_opt_n;
 	#if DEBUG && DEBUG_ADD_OPTION
 		printf("Option num, antes do delta = %d\n", num_op);
 		printf("op_conteudo = %s\n",aux);
@@ -256,15 +283,16 @@
 		printf("Option running delta = %d\n", *option_running_delta);
 	#endif
 		*option_running_delta = num_op + *option_running_delta;
-		snprintf(end, 100,"%d",num_op);
+		//snprintf(end2, 100,"%d",num_op);
 	#if DEBUG && DEBUG_ADD_OPTION
 		printf("Option num - option_running_delta = %d\n", num_op);
 	#endif
 		//opt.num = (uint8_t *) end;
-		*pkt->opts[cont_aux].num = (uint8_t)num_op;
-		pkt->opts[cont_aux].buf.len = strlen(aux);
-		pkt->opts[cont_aux].buf.p = (uint8_t *) aux;
-		printf("op->num = 0x%02x\n", *pkt->opts[cont_aux].num);
+		*buf_aux_opt_n = num_op;
+		pkt->opts[cont_aux].num = (uint8_t *)buf_aux_opt_n;
+		pkt->opts[cont_aux].buf.len = strlen(op_conteudo);
+		pkt->opts[cont_aux].buf.p = (uint8_t *) op_conteudo;
+		//printf("op->num = 0x%02x\n", *pkt->opts[cont_aux].num);
 		/*pkt->opts[numopt-1]->num = aux;
 		printf("pkt->opts[numopt-1].num = %d\n", *pkt->opts[numopt-1]->num);
 		pkt->opts[numopt-1].buf.len = strlen(op_conteudo);
@@ -289,7 +317,7 @@
 		printf("byte 1 = %d, byte 2 = %X\n", byte1, byte2);*/
 	#endif
 		pkt->hdr.tkl = tkl;
-		printf("pkt->hdr.tkl = %d\n", pkt->hdr.tkl);
+		//printf("pkt->hdr.tkl = %d\n", pkt->hdr.tkl);
 	#if DEBUG && DEBUG_PRINT_HEADER
 		printf_header(&pkt->hdr);
 	#endif
@@ -320,6 +348,14 @@
 		else if(erro == 13)
 		{
 			printf("Recebendo argumento no payload inválido\n");
+		}
+		else if(erro == 14)
+		{
+			printf("Recebendo mais de um token\n");
+		}
+		else if(erro == 15)
+		{
+			printf("Recebendo mais de um payload\n");
 		}
 		else if(erro == 20)
 		{
@@ -393,12 +429,13 @@
 	}
 
 
-	void identifica_arg (coap_packet_t *pkt, int argc, char **argv, coap_conts *cont1)
+	void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_opt_c, int *buf_aux_opt_n)
 	{
 		int j;
-		/*int cont_p = 0; // Mesma coisa do Token abaixo
+		char *end;
+		int cont_p = 0; // Mesma coisa do Token abaixo
 		int cont_op = 0; // Mesma coisa do Token abaixo
-		int cont_t = 0; // Apenas um token, caso cont_t > 1 erro de argumento;*/
+		int cont_t = 0; // Apenas um token, caso cont_t > 1 erro de argumento;
 		int option_delta = 0; //Option running delta
 	#if DEBUG_ID && DEBUG_ID_ARGS
 		for (j=1; j<argc; j++)
@@ -416,9 +453,13 @@
 			//printf("OUT  = %d\n", j);
 			if(strcmp(argv[j], "-t") == 0)
 			{
-				cont1->cont_t++;
+				cont_t++;
+				if (cont_t > 1)
+				{
+					lida_erro(erro_argumento_mais_de_um_token, argc, argv);
+				}
 				//TODO posso especificar esse erro também
-				if (j+2 > argc)
+				else if (j+2 > argc)
 				{
 					printf("erro token 1");
 					//printf("Entrei aqui no j+2 -t\n");
@@ -445,10 +486,10 @@
 			}
 			else if(strcmp(argv[j], "-op") == 0)
 			{
-				cont1->cont_op++;
+				cont_op++;
 				pkt->numopts++;
-				int cont_aux = cont1->cont_op - 1;
-				if(cont1->cont_t == 0)
+				int cont_aux = cont_op - 1;
+				if(cont_t == 0)
 				{
 					//add_token_null (&pkt);
 				}
@@ -465,20 +506,22 @@
 				{
 					//add_option (&pkt, argv[j+1], argv[j+2]);
 
+					buf_aux_opt_n[cont_op-1] = strtol(argv[j+1], &end, 0);
+					//printf("buf_aux = %d\n", buf_aux_opt_n[cont_op-1]);
 	#if DEBUG_ID_OP && DEBUG
 					printf("1op)argv[j] = -op\n");
 					printf("2op)argv[j] = %s, ", argv[j]);
 					printf("3op)argv[j+1] = %s\n", argv[j+1]);
 					printf("4op) j = %d\n", j);
 	#endif			
-					add_option(pkt, cont_aux, argv[j+1], argv[j+2], cont1->cont_op, &option_delta);
+					add_option(pkt, cont_aux, &buf_aux_opt_n[cont_op-1], argv[j+2], cont_op, &option_delta);
 					//add_option(&pkt, argv[j+1], argv[j+2], cont_op, &option_delta);
 					j+=3;
 				}
 			}
 			else if(strcmp(argv[j], "-p") == 0)
 			{
-				cont1->cont_p++;
+				cont_p++;
 				//printf("cont_p++\n");
 				//TODO posso especificar esse erro também
 				if (j+2 > argc)
@@ -487,7 +530,7 @@
 					lida_erro(erro_argumento_payload_invalido, argc, argv);
 				}
 				//TODO mesmo do TOKEN, dividir para especificar
-				else if(cont1->cont_p > 1)
+				else if(cont_p > 1)
 				{
 					printf("Mais de um payload\n");
 					lida_erro(erro_argumento_payload_invalido, argc, argv);
@@ -505,7 +548,7 @@
 					j+=2;
 				}
 			}
-			else if(cont1->cont_p == 0 && cont1->cont_op == 0)
+			else if(cont_p == 0 && cont_op == 0)
 			{
 				lida_erro (erro_comando, argc, argv);
 			}
@@ -518,16 +561,18 @@
 		//Pacote
 
 		//printf("1)OI");
-		coap_packet_t pkt;
-		coap_conts contadores;
+		coap_packet_t pkt1, 2;
 		//memset(pkt, 0, sizeof(pkt));
 		//Conexão
 		struct sockaddr_in serv_addr;
 		socklen_t addrlen = sizeof(serv_addr);
 		uint8_t buffer[256];
+		char buf_aux_opt_c[60] = "";
+		int buf_aux_opt_n[10];
 		int buf_len = sizeof(buffer);
 		memset(buffer, 0, buf_len);
-		cria_pkt (&pkt, &contadores);
+		cria_pkt (&pkt1);
+		cria_pkt (&pkt2);
 
 		int clienteSockfd = socket(AF_INET, SOCK_DGRAM, 0);
 		if (clienteSockfd < 0)
@@ -562,15 +607,28 @@
 	#endif
 
 		 }
-		 identifica_arg (&pkt, argc, argv, &contadores);
-		 printf("Imprimindo packet -> options\n\n");
-		 printf_option(&pkt.opts[0]);
-		 printf_option(&pkt.opts[1]);
-		 printf_option(&pkt.opts[2]);
-		 //strncpy(buffer,monta_pkt (&pkt), strlen(buffer));
-		 monta_pkt(&pkt, buffer, &contadores);
-		 printf("Entrando no ultimo printf\n");
+		 identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
+
+		 /*
+		 identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
+		 monta_pkt(&pkt1, buffer);
 		 printf_buffer (buffer);
+		 printf_buffer_m (buffer);
+		 printf("\n");
+		 */
+#if DEBUG && DEBUG_MONTA_OP
+		 printf("Imprimindo packet -> options\n");
+		 printf_option(&pkt1.opts[0]);
+		 printf_option(&pkt1.opts[1]);
+		 strncpy(buffer,monta_pkt (&pkt), strlen(buffer));
+		 printf("buf_aux_opt_n [0] = %d\n", buf_aux_opt_n[0]);
+		 printf("buf_aux_opt_n [1] = %d\n", buf_aux_opt_n[1]);
+#endif
+		 monta_pkt(&pkt1, buffer);
+		 //printf("Entrando no ultimo printf\n");
+		 printf_buffer (buffer);
+		 printf_buffer_m (buffer);
+		 printf("\n");
 		 /*printf("\nbuffer = 0x%02X\n", buffer[0]);
 		 printf("\nbuffer = 0x%02X\n", buffer[1]);
 		 printf("\nbuffer = 0x%02X\n", buffer[2]);
@@ -587,23 +645,28 @@
 		 printf("\nbuffer = 0x%02X\n", buffer[13]);
 		 printf("\nbuffer = 0x%02X\n", buffer[14]);
 		 printf("\nbuffer = 0x%02X\n", buffer[15]);*/
-		 return 0;
 
+		//write(clienteSockfd, buffer, addrlen);
+		char buf[256];
+		int cont=0;
 		 //Fim de argumentos
 		 //Mensagem
-		 /*while (1==1)
+		 while (1==1)
 		 {
 			 printf("Digite a mensagem:\n");
-			 scanf("%s",buffer);
-			 if (strcmp(buffer, "exit") == 0)
+			 scanf("%s",buf);
+			 strcat(buf, (char*)buffer);
+			 cont++;
+			 if (cont>5)
 			 {
 				 close(clienteSockfd);
 				 exit(2);
 			 }
 			 //__fpurge(stdin);
-			 printf("Buffer = %s\n", buffer);
+			 printf("Buffer = %s\n", buf);
 			 write(clienteSockfd, buffer, addrlen);
 
-		 }*/
+		 }
 		 //Fim de envio da mensagem
+		return 0;
 	}

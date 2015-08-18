@@ -558,113 +558,121 @@
 
 	int main (int argc, char *argv[])
 	{
+#if DEBUG && DEBUG_PKT_ARG
+#endif
 		//Pacote
 
-		//printf("1)OI");
-		coap_packet_t pkt1, 2;
 		//memset(pkt, 0, sizeof(pkt));
-		//Conexão
-		struct sockaddr_in serv_addr;
-		socklen_t addrlen = sizeof(serv_addr);
+#if DEBUG && DEBUG_PKT_ARG
+		coap_packet_t pkt1, pkt2;
 		uint8_t buffer[256];
 		char buf_aux_opt_c[60] = "";
 		int buf_aux_opt_n[10];
 		int buf_len = sizeof(buffer);
 		memset(buffer, 0, buf_len);
 		cria_pkt (&pkt1);
+		int cont_arg;
 		cria_pkt (&pkt2);
+#endif
+		char **string_sep;
 
-		int clienteSockfd = socket(AF_INET, SOCK_DGRAM, 0);
-		if (clienteSockfd < 0)
-		{
-			printf("Erro Socket\n");
-			exit(1);
-		}
-		 bzero ((char *) &serv_addr, addrlen);
-		 serv_addr.sin_family = AF_INET;
-		 serv_addr.sin_addr.s_addr = inet_addr ("127.0.0.1");
-		 serv_addr.sin_port = htons(5683);
-		 if(connect(clienteSockfd, (struct sockaddr *) &serv_addr, addrlen) < 0)
-		 {
-			 printf("Erro no socket\n");
-			 exit(1);
-		 }
+		//CONEXAO
+		int fd;
+#ifdef IPV6
+    	struct sockaddr_in6 servaddr, cliaddr;
+#else /* IPV6 */
+    	struct sockaddr_in servaddr, cliaddr;
+#endif /* IPV6 */
+
+#ifdef IPV6
+    	fd = socket(AF_INET6,SOCK_DGRAM,0);
+#else /* IPV6 */
+    	fd = socket(AF_INET,SOCK_DGRAM,0);
+#endif /* IPV6 */
+
+    	bzero(&cliaddr,sizeof(cliaddr));
+#ifdef IPV6
+    	cliaddr.sin6_family = AF_INET6;
+    	cliaddr.sin6_addr = in6addr_any;
+    	cliaddr.sin6_port = htons(5683);
+#else /* IPV6 */
+    	cliaddr.sin_family = AF_INET;
+    	cliaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    	cliaddr.sin_port = htons(5683);
+#endif /* IPV6 */
+    	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 		 //Fim de Conexão
 		 //Argumentos
 		 //Nº de Argumentos - ./cliente
-		 int cont_arg = argc -1;
 		 /*for (i=0; i<argc; i++)
 		 {
 		 	args[i] = argv[i];
 		 }*/
 		 //printf("1)OI");
-		 for (cont_arg = 0; cont_arg <argc; cont_arg++)
-		 {
-		 	//printf("Entrando no for argumento\n");
-	#if DEBUG
-		 	//printf("Cont_arg = %d, argc = %d\n", cont_arg, argc);
-		 	//printf("Arg = %s\n", argv[cont_arg]);
-	#endif
 
-		 }
-		 identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
-
-		 /*
-		 identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
-		 monta_pkt(&pkt1, buffer);
-		 printf_buffer (buffer);
-		 printf_buffer_m (buffer);
-		 printf("\n");
-		 */
-#if DEBUG && DEBUG_MONTA_OP
-		 printf("Imprimindo packet -> options\n");
-		 printf_option(&pkt1.opts[0]);
-		 printf_option(&pkt1.opts[1]);
-		 strncpy(buffer,monta_pkt (&pkt), strlen(buffer));
-		 printf("buf_aux_opt_n [0] = %d\n", buf_aux_opt_n[0]);
-		 printf("buf_aux_opt_n [1] = %d\n", buf_aux_opt_n[1]);
+		 	
+#if DEBUG && DEBUG_ARGS
+		for (cont_arg = 0; cont_arg <argc; cont_arg++)
+		{
+		 	printf("Cont_arg = %d, argc = %d\n", cont_arg, argc);
+		 	printf("Arg = %s\n", argv[cont_arg]);
+	
+		}
 #endif
-		 monta_pkt(&pkt1, buffer);
-		 //printf("Entrando no ultimo printf\n");
-		 printf_buffer (buffer);
-		 printf_buffer_m (buffer);
-		 printf("\n");
-		 /*printf("\nbuffer = 0x%02X\n", buffer[0]);
-		 printf("\nbuffer = 0x%02X\n", buffer[1]);
-		 printf("\nbuffer = 0x%02X\n", buffer[2]);
-		 printf("\nbuffer = 0x%02X\n", buffer[3]);
-		 printf("\nbuffer = 0x%02X\n", buffer[4]);
-		 printf("\nbuffer = 0x%02X\n", buffer[5]);
-		 printf("\nbuffer = 0x%02X\n", buffer[6]);
-		 printf("\nbuffer = 0x%02X\n", buffer[7]);
-		 printf("\nbuffer = 0x%02X\n", buffer[8]);
-		 printf("\nbuffer = 0x%02X\n", buffer[9]);
-		 printf("\nbuffer = 0x%02X\n", buffer[10]);
-		 printf("\nbuffer = 0x%02X\n", buffer[11]);
-		 printf("\nbuffer = 0x%02X\n", buffer[12]);
-		 printf("\nbuffer = 0x%02X\n", buffer[13]);
-		 printf("\nbuffer = 0x%02X\n", buffer[14]);
-		 printf("\nbuffer = 0x%02X\n", buffer[15]);*/
-
-		//write(clienteSockfd, buffer, addrlen);
-		char buf[256];
+#if DEBUG && DEBUG_PKT_ARG
+		identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
+		monta_pkt(&pkt1, buffer);
+		printf_buffer (buffer);
+		printf_buffer_m (buffer);
+#endif
+		printf("\n");
+		char buf_in[256], buf_out[256];
 		int cont=0;
-		 //Fim de argumentos
-		 //Mensagem
+		//Fim de argumentos
+		//Mensagem
 		 while (1==1)
 		 {
-			 printf("Digite a mensagem:\n");
-			 scanf("%s",buf);
-			 strcat(buf, (char*)buffer);
-			 cont++;
-			 if (cont>5)
-			 {
-				 close(clienteSockfd);
-				 exit(2);
-			 }
-			 //__fpurge(stdin);
-			 printf("Buffer = %s\n", buf);
-			 write(clienteSockfd, buffer, addrlen);
+			coap_packet_t pkt3;
+			cria_pkt(&pkt3);
+			memset(buf_in, 0x00, 256);
+			printf("Digite a mensagem:\n");
+			int i;
+			fgets(buf_in, 256, stdin);
+			char buf_aux_opt_c2[60] = "";
+			int buf_aux_opt_n2[10];
+
+			int len = strlen(buf_in)-1;
+			int n_str = conta_espc (buf_in);
+			char **string_sep;
+			string_sep = malloc(n_str * sizeof(char*));
+			for (i = 0; i<n_str; i++)
+		    	string_sep[i] = malloc((20) * sizeof(char));
+
+			printf("Buffer_in = %s\nLen = %d\nNumero de Strings = %d\n", buf_in, len, n_str);
+			separa_string(string_sep, buf_in, n_str, len);
+
+			identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
+			memset(buf_out, 0x00, 256);
+			monta_pkt(&pkt3, (uint8_t *)buf_out);
+		 	printf_buffer ((uint8_t *)buf_out);
+		 	printf_buffer_m ((uint8_t *)buf_out);
+
+			cont++;
+			if (cont>5)
+			{
+				close(fd);
+				exit(2);
+			}
+			size_t rsplen = strlen((char *)buf_out);
+			//__fpurge(stdin);
+			printf("Buffer_out = %s\n", buf_out);
+			sendto(fd, buf_out, rsplen, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
+			//write(clienteSockfd, buf_out, addrlen);
+			for (i=0; i<n_str; i++)
+			{
+				free(string_sep[i]);
+			}
+			free(string_sep);
 
 		 }
 		 //Fim de envio da mensagem

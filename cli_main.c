@@ -13,14 +13,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <time.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <string.h>
 
-#define FUNC_ARG 0
-#define FUNC_STRINGS 1
+#define FUNC_ARG 0 //Recebendo via argumentos no cmd
+#define FUNC_STRINGS 1 //Recebendo via strings digitadas
 
 #define DEBUG 1
 #define DEBUG_ID 0
@@ -34,22 +35,33 @@
 #define DEBUG_ADD_HDR_TKL 0
 #define DEBUG_ADD_OPTION 0
 #define DEBUG_ADD_PAYLOAD 0
-#define DEBUG_PRINT_HEADER 1
-#define DEBUG_PRINT_TOKEN 1
-#define DEBUG_PRINT_OPTION 1
+#define DEBUG_PRINT_HEADER 0
+#define DEBUG_PRINT_TOKEN 0
+#define DEBUG_PRINT_OPTION 0
 #define DEBUG_PRINT_OPTION_M 0
-#define DEBUG_PRINT_PAYLOAD 1
+#define DEBUG_PRINT_PAYLOAD 0
 #define DEBUG_MONTA_OP 0
+#define DEBUG_MONTA_H_T 0
 #define DEBUG_SEPARA_STRING 0
+#define DEBUG_SEND_MSG 0
+#define DEBUG_SEND_MSG_BUFFER 0
+#define DEBUG_MSG_RECEIVED 0
 #define DEBUG_ARGS 0
 #define DEBUG_PKT_ARG 0
+#define DEBUG_VER_BUF 0
+#define DEBUF_IMPRIMIR_BUF 1
+#define DEBUG_TIMEOUT 0
+#define DEBUG_TOKEN_SETADO 0
+#define TOKEN_ALEATORIO 1
 
-
-#define num_de_opcoes 30
+#define PORT 5683
+#define NUM_DE_OPCOES 30
 #define MAX_OPTIONS 10
-#define MAX_TAMANHO_TOKEN 16 //char
+#define MAX_TAMANHO_TOKEN 10 //char
 #define MAX_TAMANHO_OPTION 24 //char
 #define MAX_TAMANHO_PAYLOAD 64 //char
+#define ACK_WAIT_TIMEOUT_SEC 0 
+#define ACK_WAIT_TIMEOUT_USEC 10000
 
 #define MAX_LEN_OPTION 32
 #define MAX_VALUE_OPTION 64
@@ -71,12 +83,14 @@
 #define erro_payload_excede_tamanho 24
 #define erro_option_excede_tamanho 25
 #define erro_token_excede_tamanho 26
+#define erro_buffer_cheio 27
 #define erro_argumento_inv
 #define erro_falta_argumento 30
 
 
-	void lida_erro_monta (int erro);
-	void lida_erro_add (int erro);
+	void lida_erro_monta (short int erro);
+	void lida_erro_add (short int erro);
+	void lida_erro_buffer (short int erro);
 	
 	typedef struct
 	{
@@ -154,22 +168,273 @@
 
 	void printf_buffer(uint8_t *buffer)
 	{
-		int i;
+		short int i;
 		for (i=0; i<strlen((char *)buffer); i++)
 		{
 			//if ()
 			printf("buffer [%d] = 0x%02x\n", i, buffer[i]);
 		}
 	}
-	void printf_buffer_m(uint8_t *buffer)
+	void printf_buffer_m(uint8_t *buffer, short int size)
 	{
-		int i;
-		for (i=0; i<strlen((char *)buffer); i++)
+		short int i;
+		for (i=0; i<size; i++)
 		{
 			//if ()
 			printf("%02x ", buffer[i]);
 		}
 	}
+
+	void tempo_agora (char *tempo);
+
+void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out_p, short int *cont_msg, short int *pos, char buf_str[][512])
+{
+	int k, m, ult_esc = -1;
+#if DEBUG && DEBUG_SEND_MSG_BUFFER
+	printf("buf_out send_msg = %s\n", buf_out);
+#endif
+		/*DECIDIR O QUE FAZER SE BUFFER ESTIVER CHEIO*/
+		if(*cont_msg > 7)
+		{
+			lida_erro_buffer (erro_buffer_cheio);
+		}
+		else
+		{
+			char tempo[40];
+			tempo_agora(tempo);
+			/*
+			uint8_t *p = NULL;
+			p = buf_out;
+			p = p+(int)strlen(buf_out);*/
+#if DEBUG && DEBUG_SEND_MSG
+			printf("123\n");
+			printf("-2 0X%02X ", *(buf_out_p-2));
+			printf("-1 0X%02X ", *(buf_out_p-1));
+			printf(" 0X%02X ", *buf_out_p);
+			printf("+1 0X%02X", *(buf_out_p+1));
+			printf("\n");
+			printf("strlen %d\n", strlen(buf_out));
+			printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
+			printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
+			printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
+			printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
+#endif
+			//*(p+1) = 0x00;
+			//*(p-1) = 0x00;
+			//*p = " ";
+			//*p++ = 0x0A;
+
+			buf_out_p = buf_out_p + strlen(buf_out);
+			*buf_out_p++ = 0x20;
+#if DEBUG && DEBUG_SEND_MSG
+			printf("213\n");
+			printf("-2 0X%02X ", *(buf_out_p-2));
+			printf("-1 0X%02X ", *(buf_out_p-1));
+			printf(" 0X%02X ", *buf_out_p);
+			printf("+1 0X%02X", *(buf_out_p+1));
+			printf("\n");
+			printf("strlen %d\n", strlen(buf_out));
+			printf("printf ultima pos -2 = 0x%02X\n", *(buf_out_p-2));
+			printf("printf ultima pos -1 = 0x%02X\n", *(buf_out_p-1));
+			printf("printf ultima pos = 0x%02X\n", *(buf_out_p));
+			printf("printf ultima pos +1 = 0x%02X\n", *(buf_out_p+1));
+#endif
+			memcpy(buf_out_p, (uint8_t *)tempo, 512);
+
+#if DEBUG && DEBUG_SEND_MSG
+			printf("321\n");
+			printf("-2 0X%02X ", *(buf_out_p-2));
+			printf("-1 0X%02X ", *(buf_out_p-1));
+			printf(" 0X%02X ", *buf_out_p);
+			printf("+1 0X%02X", *(buf_out_p+1));
+			printf("\n");
+			printf("strlen %d\n", strlen(buf_out));
+			printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
+			printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
+			printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
+			printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
+#endif
+
+			//strncat(buf_out, tempo, 512);
+			buf_out_p=buf_out_p+(int)strlen(tempo);
+			printf("1buf_out = %s\n", buf_out_p);
+			printf("buf_out = %s\n", buf_out);
+			//strncat((char*)buf_out, tempo, 512);
+#if DEBUG && DEBUG_SEND_MSG
+			printf("\n");
+			printf("buf_out = %s, buf_out len = %d, buf_out size = %d\n", buf_out, strlen((char*)buf_out), sizeof(buf_out));
+			for (m = 0; m<(int)strlen((char*)buf_out); m++)
+			{
+				printf("buf[%d]= 0x%02X\n", m, buf_out[m]);
+			}
+			printf("\n");
+			for (m = 0; m<(int)strlen((char*)buf_out); m++)
+			{
+				printf("%02X ", buf_out[m]);
+			}
+			printf("\n");
+#endif
+			int rsplen = strlen(buf_out);
+#if DEBUG && DEBUG_SEND_MSG
+			printf("rsplen = %d\n", (int) rsplen);
+#endif
+			sendto(fd, buf_out, rsplen, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+			k=1;
+			printf("Enviando mensagem\n");
+			while(k==1)
+			{
+#if DEBUG && DEBUG_SEND_MSG
+				printf("ult_esc = %d", ult_esc);
+#endif
+				for (m = 0; m<8; m++)
+				{
+					printf("pos [%d] = %d\n", m, pos[m]);
+				}
+				if(ult_esc == 7)
+				{
+					ult_esc = -1;
+				}
+				if(pos[ult_esc+k]==0)
+				{
+#if DEBUG && DEBUG_SEND_MSG
+					printf("Ult_esc = %d, cont_msg = %d, pos[ult_esc] = %d\n", ult_esc, *cont_msg, pos[ult_esc+k]);
+#endif
+					ult_esc++;
+					*cont_msg = *cont_msg + 1;;
+					pos[ult_esc] = 1;
+					memcpy(buf_str[ult_esc], buf_out, 512);
+					k++;
+#if DEBUG && DEBUG_SEND_MSG
+					printf("buf = %s \n", (char*)buf_str[ult_esc]);
+					printf("cont_msg = %d\n", *cont_msg);
+#endif
+					break;
+				}
+				ult_esc++;
+#if DEBUG && DEBUG_SEND_MSG
+				//printf("ult_esc = %d", ult_esc);
+#endif
+				
+			}
+#if DEBUG && DEBUG_SEND_MSG
+				printf("Saiu do while\n");
+#endif
+			
+		}
+				//exit (1);
+}
+
+void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos)
+{
+	int i, j;
+#if DEBUG && DEBUG_MSG_RECEIVED
+	printf("\nIniciando lida_msg_recebida, valores:\n");
+	printf("buf_in = %s\n", buf_in);
+	for (i=0; i<strlen(buf_in); i++)
+	{
+		printf("0x%02X ", (uint8_t) buf_in[i]);
+	}
+	printf("\n");
+	for (i=0; i<strlen(buf_in); i++)
+	{
+		printf("%c ",buf_in[i]);
+	}
+	for (i=0; i<8; i++)
+	{
+
+		printf("\npos [%d] = %d,", i, pos[i]);
+		printf("buf_str [%d] = %s\n", i, buf_str[i]);
+	}
+
+	printf("cont_msg = %d\n", *cont_msg);
+#endif
+	for (i=0; i<8; i++)
+	{
+#if DEBUG && DEBUG_MSG_RECEIVED
+		printf("entrando no for i<8\n");
+#endif
+		if (pos[i] == 1)
+		{
+#if DEBUG && DEBUG_MSG_RECEIVED
+		printf("entrando no if \n");
+#endif
+#if DEBUG && DEBUG_MSG_RECEIVED
+		printf("buf_in[%d] = 0x%02X\n", i, buf_in[0]);
+		printf("buf_str[%d] = 0x%02X\n", i, buf_str[0][0]);
+		printf("buf_in[%d] = 0x%02X\n", i, buf_in[1]);
+		printf("buf_str[%d] = 0x%02X\n", i, buf_str[0][1]);
+#endif
+									//Resposta(6)			
+			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && (buf_in[1] == 0x44))
+			{
+#if DEBUG && DEBUG_MSG_RECEIVED
+				printf("entrando na comparacao \n");
+#endif
+				int cont = 0;
+				for (j=0; j<(buf_in[0] & 0x0F); j++)
+				{
+#if DEBUG && DEBUG_MSG_RECEIVED
+					printf("entrando no for buf_in\n");
+#endif
+					if(buf_in[2+j] == buf_str[i][2+j])
+					{
+						cont++;
+					}
+				}
+				if (cont == (buf_in[0] & 0x0F))
+				{
+					printf("São iguais\n");
+					pos[i] = 0;
+					*cont_msg = *cont_msg - 1;;
+					memset(buf_str[i], 0x00, 512);
+				}
+			}
+			else
+			{
+				printf("Mensagem não é resposta servidor\n");
+			}
+		}
+	}
+}
+
+void printf_buffer_str(char buf[][512], int num_linhas)
+{
+	int i,j;
+	for (i=0; i<num_linhas; i++)
+	{		
+		printf("\n");
+		for (j=0; j<strlen(buf[i]); j++)
+		{
+			printf("0x%02X ", buf[i][j]);
+		}
+		printf("\n");
+		printf("buffer [%d] = %s \n", i, (char *)buf[i]);
+	}
+}
+
+void tempo_agora (char *tempo)
+{
+	time_t  t= time(NULL);
+	struct tm tm = *localtime(&t);
+	snprintf(tempo,40,"Hora: ""%d"":""%d"":""%d" " ""Data:""%d""/""%d", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_mday, tm.tm_mon);
+	printf("Tempo agora = %s\n", tempo);
+}
+	//Recebendo mensagem com 00 00, cliente interpreta restante como 0, porém vem payload após 00 00
+short int corrige_len (uint8_t *buffer, short int size)
+{
+		short int i = 0;
+		short int cont_ff = 0;
+		while (i<size && (cont_ff<1 || buffer[i] != 0x00))
+		{
+			if(buffer[i] == 0xff)
+			{
+				cont_ff++;
+			}
+			printf("buffer[%i] = %c\n", i, buffer[i]);
+			i++;
+		}
+		return i;
+}
 	void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 	{
 		//uint8_t aux_header[4];
@@ -180,7 +445,7 @@
 		//max delta = 64
 
 
-		int i=0;
+		short int i=0;
 		buf[0] = (pkt->hdr.ver & 0x03) << 6;
 	    buf[0] |= (pkt->hdr.t & 0x03) << 4;
 	    buf[0] |= (pkt->hdr.tkl & 0xFF);
@@ -200,7 +465,7 @@
 	    	memcpy(p, pkt->tok.p, pkt->hdr.tkl);
 	    	p = p+pkt->hdr.tkl;
 	    }
-	    int aux = (int)pkt->numopts;
+	    short int aux = (short int)pkt->numopts;
 	    for (i=0; i<aux; i++)
 	    {
 #if DEBUG && DEBUG_MONTA_OP
@@ -267,11 +532,8 @@
 			printf("antes do *p\n");
 #endif
 	    	*p++ = op_num_len;
-			//ACIMA p = p+1;
-				printf("Antes no delta = 13\n");
 			if(delta==13)
 			{
-				printf("Entrando no delta = 13\n");
 #if DEBUG && DEBUG_MONTA_OP
 				printf("Entrando no delta == 13\n");
 #endif
@@ -284,7 +546,6 @@
 			{
 				*p++=len_aux;
 			}
-				printf("Depois do delta = 13\n");
 			memcpy(p, pkt->opts[i].buf.p, pkt->opts[i].buf.len);
 			p = p + pkt->opts[i].buf.len;
 #if DEBUG && DEBUG_MONTA_OP
@@ -307,24 +568,75 @@
 
 	}
 
-	void monta_header (coap_packet_t *pkt)
+	void monta_header_token (coap_packet_t *pkt, uint8_t *token)
 	{
 		//0100 0000 0000 0011 0000 0010 0000 0001
 		pkt->hdr.ver = 	 0x01; // versão 01;
 		pkt->hdr.t = 	 0x00; // code 0 (confirmable);
-		pkt->hdr.tkl = 	 0x00; //Tamanho do token -> para testes, 0
+		//pkt->hdr.tkl = 	 0x00; //Tamanho do token -> para testes, 0
 		pkt->hdr.code =  0x03; //request -> 0000 0011 -> PUT
-		pkt->hdr.id[0] = 0x02; //0010 -> TESTE
-		pkt->hdr.id[1] = 0x01; //0001 -> TESTE
+		// GERANDO id aleatoriamente
+		srand(time(NULL));
+		short int var_aux = rand()%254;
+		pkt->hdr.id[0] = (uint8_t) var_aux; //0010 -> TESTE
+		var_aux = rand()%254;
+		pkt->hdr.id[1] = (uint8_t) var_aux; //0001 -> TESTE
+		// GERANDO TOKEN aleatoriamente
+#if TOKEN_ALEATORIO
+		var_aux = rand()%254;
+		token[0] = var_aux;
+#endif
+#if DEBUG && DEBUG_MONTA_H_T
+		printf("token = %d, var_aux = %d\n", token[0], var_aux);
+#endif
+#if TOKEN_ALEATORIO
+		var_aux = rand()%254;
+		token[1] = var_aux;
+#endif
+#if DEBUG && DEBUG_MONTA_H_T
+		printf("token = %d, var_aux = %d\n", token[1], var_aux);
+#endif
+#if TOKEN_ALEATORIO
+		var_aux = rand()%254;
+		token[2] = var_aux;
+#endif
+#if DEBUG && DEBUG_MONTA_H_T
+		printf("token = %d, var_aux = %d\n", token[2], var_aux);
+#endif
+#if TOKEN_ALEATORIO
+		var_aux = rand()%254;
+		token[3] = var_aux;
+#endif
+#if DEBUG && DEBUG_MONTA_H_T
+		printf("token = %d, var_aux = %d\n", token[3], var_aux);
+#endif
+#if TOKEN_ALEATORIO
+		var_aux = rand()%254;
+		token[4] = var_aux;
+#endif
+#if DEBUG && DEBUG_TOKEN_SETADO
+		token[0] = 0x30;
+		token[1] = 0x31;
+		token[2] = 0x32;
+		token[3] = 0x33;
+		token[4] = 0x34;
+#endif
+#if DEBUG && DEBUG_MONTA_H_T
+		printf("token = %d, var_aux = %d\n", token[4], var_aux);
+#endif
+		pkt->tok.p = token;
+		//printf("token = 0x%02x 0x%02x  0x%02x 0x%02x 0x%02x\n", token[0], token[1], token[2], token[3], token[4]);
+		pkt->tok.len = 5;
+		pkt->hdr.tkl = pkt->tok.len;
 
 	#if DEBUG && DEBUG_M_HEADER
 		printf_header(&pkt->hdr);
 	#endif
 	}
 
-	void cria_pkt (coap_packet_t *pkt)
+	void cria_pkt (coap_packet_t *pkt, uint8_t *token)
 	{
-		monta_header (pkt);
+		monta_header_token (pkt, token);
 		pkt->numopts = 0;
 	}
 	/*void add_token_null (coap_packet_t *pkt)
@@ -348,9 +660,9 @@
 		}
 
 	}
-	void add_option (coap_packet_t *pkt, int cont_aux, int *buf_aux_opt_n, char *op_conteudo, int numopt, int *option_running_delta)
+	void add_option (coap_packet_t *pkt, short int cont_aux, short int *buf_aux_opt_n, char *op_conteudo, short int numopt, short int *option_running_delta)
 	{
-		int num_op = *buf_aux_opt_n;
+		short int num_op = *buf_aux_opt_n;
 		if (strlen(op_conteudo) > 24)
 		{
 			lida_erro_add(erro_option_excede_tamanho);
@@ -409,8 +721,15 @@
 #endif
 		}
 	}
-
-	void lida_erro_add (int erro)
+	void lida_erro_buffer (short int erro)
+	{
+		if(erro == erro_buffer_cheio)
+		{
+			printf("Buffer cheio, erro %d\n", erro);
+		}
+		exit (0);
+	}
+	void lida_erro_add (short int erro)
 	{
 		if (erro == erro_token_excede_tamanho)
 		{
@@ -427,7 +746,7 @@
 		exit (0);
 	}
 
-	void lida_erro_monta (int erro)
+	void lida_erro_monta (short int erro)
 	{
 		if (erro == erro_len_15)
 		{
@@ -447,7 +766,7 @@
 		}
 		exit (0);
 	}
-	void lida_erro_id(int erro, int argc, char **argv)
+	void lida_erro_id(short int erro, short int argc, char **argv)
 	{
 		if(erro == erro_argumento_invalido)
 		{
@@ -493,7 +812,7 @@
 		{
 			printf("Recebendo comando invalido, erro %d\n", erro);
 		}
-		int i;
+		short int i;
 		printf("Mensagem enviada: \n");
 		for (i=1; i<argc; i++)
 		{
@@ -503,9 +822,9 @@
 		exit (0);
 	}
 
-	int veri_token (char *argv1)
+	short int veri_token (char *argv1)
 	{
-		int i;
+		short int i;
 		for (i=0; i<strlen(argv1); i++)
 		{
 			//ASCII 48-57
@@ -517,10 +836,10 @@
 		return 0;
 	}
 
-	int veri_option (char *argv1, char *argv2)
+	short int veri_option (char *argv1, char *argv2)
 	{
-		int i;
-		int cont = 0;
+		short int i;
+		short int cont = 0;
 		for (i=0; i<strlen(argv1); i++)
 		{
 			//ASCII 48-57
@@ -535,9 +854,9 @@
 			return 0;
 	}
 
-	int veri_payload (char *argv1)
+	short int veri_payload (char *argv1)
 	{
-		int i;
+		short int i;
 		if (argv1[0] == 43 || argv1[0] == 45)
 			return 1;
 		for (i=1; i<strlen(argv1); i++)
@@ -551,7 +870,7 @@
 		return 0;
 	}
 
-	int find_minus_plus (char *argv)
+	short int find_minus_plus (char *argv)
 	{
 		if (argv[0] == '-' || argv[0] == '+')
 		{
@@ -561,14 +880,14 @@
 	}
 
 
-	void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_opt_c, int *buf_aux_opt_n)
+	void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_opt_c, short int *buf_aux_opt_n)
 	{
-		int j;
+		short int j;
 		char *end;
-		int cont_p = 0; // Mesma coisa do Token abaixo
-		int cont_op = 0; // Mesma coisa do Token abaixo
-		int cont_t = 0; // Apenas um token, caso cont_t > 1 erro de argumento;
-		int option_delta = 0; //Option running delta
+		short int cont_p = 0; // Mesma coisa do Token abaixo
+		short int cont_op = 0; // Mesma coisa do Token abaixo
+		short int cont_t = 0; // Apenas um token, caso cont_t > 1 erro de argumento;
+		short int option_delta = 0; //Option running delta
 	#if DEBUG_ID && DEBUG_ID_ARGS
 		for (j=1; j<argc; j++)
 		{
@@ -638,7 +957,7 @@
 			{
 				cont_op++;
 				pkt->numopts++;
-				int cont_aux = cont_op - 1;
+				short int cont_aux = cont_op - 1;
 				if(cont_t == 0)
 				{
 					//add_token_null (&pkt);
@@ -709,10 +1028,10 @@
 		//monta_pkt ()
 	}
 
-	void separa_string (char **string_sep, char *buf, int n_str, int len)
+	void separa_string (char **string_sep, char *buf, short int n_str, short int len)
 {
-	int i;
-	int count_w = 0, j = 0;
+	short int i;
+	short int count_w = 0, j = 0;
 	for (i=0; i<len; i++)
 	{
 #if DEBUG && DEBUG_SEPARA_STRING
@@ -741,9 +1060,9 @@
 	}
 #endif
 }
-int  conta_espc (char *buf)
+short int  conta_espc (char *buf)
 {
-	int i, cont=0;
+	short int i, cont=0;
 	if (buf[0] == ' ')
 	{
 		printf("Erro\n");
@@ -774,16 +1093,14 @@ int  conta_espc (char *buf)
 #if DEBUG && DEBUG_PKT_ARG && FUNC_ARG
 		coap_packet_t pkt1, pkt2;
 		uint8_t buffer[512];
-		memset(buffer, 0, buf_len);
-		int buf_len = sizeof(buffer);
+		int buf_siz = sizeof(buffer);
+		memset(buffer, 0, buf_siz);
 		char buf_aux_opt_c[60] = "";
-		int buf_aux_opt_n[10];
+		short int buf_aux_opt_n[10];
 		cria_pkt (&pkt1);
-		int cont_arg;
+		short int cont_arg;
 		cria_pkt (&pkt2);
 #endif
-		char **string_sep;
-
 		//CONEXAO
 		int fd;
 #ifdef IPV6
@@ -799,25 +1116,17 @@ int  conta_espc (char *buf)
 #endif /* IPV6 */
 
     	bzero(&cliaddr,sizeof(cliaddr));
+    	socklen_t szcliaddr = sizeof(cliaddr);
 #ifdef IPV6
     	cliaddr.sin6_family = AF_INET6;
     	cliaddr.sin6_addr = in6addr_any;
-    	cliaddr.sin6_port = htons(5683);
+    	cliaddr.sin6_port = htons(PORT);
 #else /* IPV6 */
     	cliaddr.sin_family = AF_INET;
     	cliaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    	cliaddr.sin_port = htons(5683);
+    	cliaddr.sin_port = htons(PORT);
 #endif /* IPV6 */
     	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
-		 //Fim de Conexão
-		 //Argumentos
-		 //Nº de Argumentos - ./cliente
-		 /*for (i=0; i<argc; i++)
-		 {
-		 	args[i] = argv[i];
-		 }*/
-		 //printf("1)OI");
-
 		 	
 #if DEBUG && DEBUG_ARGS && FUNC_ARG
 		for (cont_arg = 0; cont_arg <argc; cont_arg++)
@@ -831,61 +1140,132 @@ int  conta_espc (char *buf)
 		identifica_arg (&pkt1, argc, argv, buf_aux_opt_c, buf_aux_opt_n);
 		monta_pkt(&pkt1, buffer);
 		printf_buffer (buffer);
-		printf_buffer_m (buffer);
+		printf_buffer_m (buffer, buf_siz));
 #endif
+		//TIMEOUT
+		struct timeval tv;
+		tv.tv_sec = ACK_WAIT_TIMEOUT_SEC;
+	   	tv.tv_usec = ACK_WAIT_TIMEOUT_USEC;
+	   	short int num_timeouts = 0;
+	  	//
 		printf("\n");
-		char buf_in[512], buf_out[512];
-		int cont=0;
+		char buf_in[512], buf_out[512], buf_str[8][512];
+#if DEBUG && DEBUG_VER_BUF
+		char op[3];
+#endif
 		//Fim de argumentos
+
+		
+		//int ult_esc = -1;
+		short int cont_msg = 0;
+		short int pos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 		//Mensagem
 		 while (1==1)
 		 {
+		 	//buffer
 			coap_packet_t pkt3;
-			cria_pkt(&pkt3);
-			memset(buf_in, 0x00, 512);
-			printf("Digite a mensagem:\n");
-			int i;
-			fgets(buf_in, 512, stdin);
-			char buf_aux_opt_c2[60] = "";
-			int buf_aux_opt_n2[10];
-
-			int len = strlen(buf_in)-1;
-			int n_str = conta_espc (buf_in);
-			char **string_sep;
-			string_sep = malloc(n_str * sizeof(char*));
-			for (i = 0; i<n_str; i++)
-		    	string_sep[i] = malloc((20) * sizeof(char));
-
-#if DEBUG && DEBUG_SEPARA_STRING
-			printf("Buffer_in = %s\nLen = %d\nNumero de Strings = %d\n", buf_in, len, n_str);
-#endif
-			separa_string(string_sep, buf_in, n_str, len);
-
-			identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
+			uint8_t token[5];
+			cria_pkt(&pkt3, token);
 			memset(buf_out, 0x00, 512);
-			monta_pkt(&pkt3, (uint8_t *)buf_out);
-			printf("Mensagem enviada:\n");
-		 	printf_buffer_m ((uint8_t *)buf_out);
+			memset(buf_in, 0x00, 512);
+			num_timeouts = 0;
 
-			cont++;
-			if (cont>5)
+#if DEBUG && DEBUG_VER_BUF
+			printf("\nQual opção?\n1 - Digitar mensagem, 2 - imprimir buffer\n");
+			fflush(stdin);
+			fgets (op, 3, stdin);
+			
+			if  (op[0] == '2')
 			{
-				close(fd);
-				exit(2);
+				printf_buffer_str (buf_str, 8);
 			}
-			size_t rsplen = strlen((char *)buf_out);
-			//__fpurge(stdin);
-			printf("\n");
-			printf("Buffer_out = %s\n", buf_out);
-			sendto(fd, buf_out, rsplen, 0, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
-			//write(clienteSockfd, buf_out, addrlen);
-			for (i=0; i<n_str; i++)
+			else if ((op[0] =='1'))
 			{
-				free(string_sep[i]);
-			}
-			free(string_sep);
+#endif
+				fflush(stdin);
+				printf("Digite a mensagem:\n");
+				fgets(buf_out, 512, stdin);
+				char *buf_out_p = buf_out;
+				short int i;
+				char buf_aux_opt_c2[60] = "";
+				short int buf_aux_opt_n2[10];
 
+				short int len = strlen(buf_out)-1;
+				short int n_str = conta_espc (buf_out);
+				char **string_sep;
+				string_sep = malloc(n_str * sizeof(char*));
+				for (i = 0; i<n_str; i++)
+			    	string_sep[i] = malloc((20) * sizeof(char));
+
+	#if DEBUG && DEBUG_SEPARA_STRING
+				printf("Buffer_in = %s\nLen = %d\nNumero de Strings = %d\n", buf_out, len, n_str);
+	#endif
+				separa_string(string_sep, buf_out, n_str, len);
+
+				identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
+				memset(buf_out, 0x00, 512);
+				monta_pkt(&pkt3, (uint8_t *)buf_out);
+				printf("Mensagem enviada:\n");
+			 	printf_buffer_m ((uint8_t *)buf_out, strlen(buf_out));
+				size_t rsplen = strlen(buf_out);
+				//buf_out_p = buf_out_p + strlen(buf_out);
+	#if DEBUG && DEBUG_SEND_MSG
+				printf("buf_out [0] = %c, 0x%02X", *buf_out_p, *buf_out_p);
+	#endif
+				printf("\n");
+				printf("Buffer_out = %s\n", buf_out);
+	#if DEBUG && DEBUG_SEND_MSG
+				printf("cont_msg = %d\n",cont_msg);
+	#endif
+				send_msg (fd, cliaddr, buf_out, buf_out_p, &cont_msg,  pos, buf_str);
+#if DEBUG && DEBUG_VER_BUF
+				printf("1)");
+				printf_buffer_str (buf_str, 8);
+#endif
+				while (num_timeouts < 2)
+			   {
+				   if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+				   {
+				   		perror("Error");
+				   }		
+				   if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
+				   {
+	#if DEBUG && DEBUG_TIMEOUT
+				   		printf("buf in = %s\n", buf_in);
+	#endif
+				   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+				   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
+				   		num_timeouts++;
+				   }
+				   else
+				   {
+				   		num_timeouts = 2;
+				   		lida_msg_recebida (buf_in, buf_str, &cont_msg, pos);
+#if DEBUG && DEBUG_VER_BUF
+				   		printf("2)");
+				   		printf_buffer_str (buf_str, 8);
+#endif
+	#if DEBUG && DEBUG_TIMEOUT
+				   		printf("msg received = ");
+				   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
+				   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
+				   		printf("msg received = ");
+				   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
+				   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
+				   		printf("\n");
+	#endif
+				   }
+				}
+				for (i=0; i<n_str; i++)
+				{
+					free(string_sep[i]);
+				}
+				free(string_sep);
+#if DEBUG && DEBUG_VER_BUF
+			}
+#endif
 		 }
+		 close(fd);
 		 //Fim de envio da mensagem
 		return 0;
 	}

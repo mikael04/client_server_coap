@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : cli_main.c
- Author      : Mikael
- Version     :
- Copyright   : Your copyright notice
- Description : 
- ============================================================================
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -22,6 +12,9 @@
 
 #define FUNC_ARG 0 //Recebendo via argumentos no cmd
 #define FUNC_STRINGS 1 //Recebendo via strings digitadas
+#define FUNC_CLI_TOK_OP 0 //Receber argumentos via cmd (cliente, token, options)
+#define DEBUG_TOKEN_SETADO 0
+#define TOKEN_ALEATORIO 1
 
 #define DEBUG 1
 #define DEBUG_ID 0
@@ -51,10 +44,9 @@
 #define DEBUG_VER_BUF 0
 #define DEBUF_IMPRIMIR_BUF 1
 #define DEBUG_TIMEOUT 0
-#define DEBUG_TOKEN_SETADO 0
-#define TOKEN_ALEATORIO 1
+#define DEBUG_OPTS_SET 1
 
-#define PORT 5683
+#define PORT 5684
 #define NUM_DE_OPCOES 30
 #define MAX_OPTIONS 10
 #define MAX_TAMANHO_TOKEN 10 //char
@@ -159,11 +151,23 @@
 
 	void printf_option (coap_option_t *opt)
 	{
+		int i;
 		printf("Option:\n");
 	    printf("  num  %d\n", (int)*opt->num);
-	    printf("  num  0x%02x\n", *opt->num);
+	    printf("  num  0x%02X\n", *opt->num);
 	    printf("  option buf len %d\n", opt->buf.len);
-	    printf("  option buf p %s\n", opt->buf.p);
+	    printf("  option buf p = ");
+	    for (i=0; i<opt->buf.len; i++)
+	    {
+			printf("%c", opt->buf.p[i]);
+	    }
+	    printf("\n");	   
+	    printf("  option buf p = ");
+	    for (i=0; i<opt->buf.len; i++)
+	    {
+			printf("0x%02X ", opt->buf.p[i]);
+	    }
+	    printf("\n");	    
 	}
 
 	void printf_buffer(uint8_t *buffer)
@@ -172,7 +176,7 @@
 		for (i=0; i<strlen((char *)buffer); i++)
 		{
 			//if ()
-			printf("buffer [%d] = 0x%02x\n", i, buffer[i]);
+			printf("buffer [%d] = 0x%02X\n", i, buffer[i]);
 		}
 	}
 	void printf_buffer_m(uint8_t *buffer, short int size)
@@ -181,7 +185,7 @@
 		for (i=0; i<size; i++)
 		{
 			//if ()
-			printf("%02x ", buffer[i]);
+			printf("%02X ", buffer[i]);
 		}
 	}
 
@@ -614,13 +618,7 @@ short int corrige_len (uint8_t *buffer, short int size)
 		var_aux = rand()%254;
 		token[4] = var_aux;
 #endif
-#if DEBUG && DEBUG_TOKEN_SETADO
-		token[0] = 0x30;
-		token[1] = 0x31;
-		token[2] = 0x32;
-		token[3] = 0x33;
-		token[4] = 0x34;
-#endif
+
 #if DEBUG && DEBUG_MONTA_H_T
 		printf("token = %d, var_aux = %d\n", token[4], var_aux);
 #endif
@@ -629,14 +627,27 @@ short int corrige_len (uint8_t *buffer, short int size)
 		pkt->tok.len = 5;
 		pkt->hdr.tkl = pkt->tok.len;
 
-	#if DEBUG && DEBUG_M_HEADER
+#if DEBUG && DEBUG_M_HEADER
 		printf_header(&pkt->hdr);
-	#endif
+#endif
 	}
 
-	void cria_pkt (coap_packet_t *pkt, uint8_t *token)
+	void monta_op (coap_packet_t *pkt, coap_option_t *opts)
+	{
+		pkt->opts[0].buf.len = opts[0].buf.len;
+		pkt->opts[0].buf.p = opts[0].buf.p;
+		pkt->opts[0].num = opts[0].num;
+		pkt->opts[1].buf.len = opts[1].buf.len;
+		pkt->opts[1].buf.p = opts[1].buf.p;
+		pkt->opts[1].num = opts[1].num;
+		printf_option(&pkt->opts[0]);
+		printf_option(&pkt->opts[1]);
+	}
+
+	void cria_pkt (coap_packet_t *pkt, uint8_t *token, coap_option_t *opts)
 	{
 		monta_header_token (pkt, token);
+		monta_op (pkt, opts);
 		pkt->numopts = 0;
 	}
 	/*void add_token_null (coap_packet_t *pkt)
@@ -1165,7 +1176,41 @@ short int  conta_espc (char *buf)
 		 	//buffer
 			coap_packet_t pkt3;
 			uint8_t token[5];
-			cria_pkt(&pkt3, token);
+#if DEBUG && DEBUG_TOKEN_SETADO
+			token[0] = 0x30;
+			token[1] = 0x31;
+			token[2] = 0x32;
+			token[3] = 0x33;
+			token[4] = 0x34;
+#endif
+#if DEBUG && DEBUG_OPTS_SET
+			coap_option_t opts[2];
+			uint8_t op1[3] = "var";
+			op1[3] = 0x00;
+			uint8_t op2[11] = "temperature";
+			op2[11] = 0x00;
+			uint8_t num1 = 0x11;
+			uint8_t num2 = 0x11;
+			opts[0].buf.p = op1;
+			opts[0].buf.len = strlen((char*)op1);
+			opts[0].num = &num1;
+			opts[1].buf.p = op2;
+			opts[1].buf.len = strlen((char*)op2);
+			opts[1].num = &num2;
+#endif
+#if DEBUG && DEBUG_OPTS_SET
+			printf("opts[0].buf.p = %s\n", opts[0].buf.p);
+			printf("opts[0].buf.p[0] = 0x%02X\n", opts[0].buf.p[0]);
+			printf("opts[0].buf.p[last] = 0x%02X\n", opts[0].buf.p[2]);
+			printf("opts[0].buf.len = %d\n", (int) opts[0].buf.len);
+			printf("opts[0].num = 0x%02X\n", *opts[0].num);
+			printf("opts[1].buf.p = %s\n", opts[1].buf.p);
+			printf("opts[1].buf.p[0] = 0x%02X\n", opts[1].buf.p[0]);
+			printf("opts[1].buf.p[last] = 0x%02X\n", opts[1].buf.p[10]);
+			printf("opts[1].buf.len = %d\n", (int) opts[1].buf.len);
+			printf("opts[1].num = 0x%02X\n", *opts[1].num);
+			cria_pkt(&pkt3, token, opts);
+#endif
 			memset(buf_out, 0x00, 512);
 			memset(buf_in, 0x00, 512);
 			num_timeouts = 0;
@@ -1189,7 +1234,6 @@ short int  conta_espc (char *buf)
 				short int i;
 				char buf_aux_opt_c2[60] = "";
 				short int buf_aux_opt_n2[10];
-
 				short int len = strlen(buf_out)-1;
 				short int n_str = conta_espc (buf_out);
 				char **string_sep;
@@ -1197,9 +1241,9 @@ short int  conta_espc (char *buf)
 				for (i = 0; i<n_str; i++)
 			    	string_sep[i] = malloc((20) * sizeof(char));
 
-	#if DEBUG && DEBUG_SEPARA_STRING
+#if DEBUG && DEBUG_SEPARA_STRING
 				printf("Buffer_in = %s\nLen = %d\nNumero de Strings = %d\n", buf_out, len, n_str);
-	#endif
+#endif
 				separa_string(string_sep, buf_out, n_str, len);
 
 				identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
@@ -1209,14 +1253,14 @@ short int  conta_espc (char *buf)
 			 	printf_buffer_m ((uint8_t *)buf_out, strlen(buf_out));
 				size_t rsplen = strlen(buf_out);
 				//buf_out_p = buf_out_p + strlen(buf_out);
-	#if DEBUG && DEBUG_SEND_MSG
+#if DEBUG && DEBUG_SEND_MSG
 				printf("buf_out [0] = %c, 0x%02X", *buf_out_p, *buf_out_p);
-	#endif
+#endif
 				printf("\n");
 				printf("Buffer_out = %s\n", buf_out);
-	#if DEBUG && DEBUG_SEND_MSG
+#if DEBUG && DEBUG_SEND_MSG
 				printf("cont_msg = %d\n",cont_msg);
-	#endif
+#endif
 				send_msg (fd, cliaddr, buf_out, buf_out_p, &cont_msg,  pos, buf_str);
 #if DEBUG && DEBUG_VER_BUF
 				printf("1)");
@@ -1230,9 +1274,9 @@ short int  conta_espc (char *buf)
 				   }		
 				   if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
 				   {
-	#if DEBUG && DEBUG_TIMEOUT
+#if DEBUG && DEBUG_TIMEOUT
 				   		printf("buf in = %s\n", buf_in);
-	#endif
+#endif
 				   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
 				   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
 				   		num_timeouts++;
@@ -1245,7 +1289,7 @@ short int  conta_espc (char *buf)
 				   		printf("2)");
 				   		printf_buffer_str (buf_str, 8);
 #endif
-	#if DEBUG && DEBUG_TIMEOUT
+#if DEBUG && DEBUG_TIMEOUT
 				   		printf("msg received = ");
 				   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
 				   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
@@ -1253,7 +1297,7 @@ short int  conta_espc (char *buf)
 				   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
 				   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
 				   		printf("\n");
-	#endif
+#endif
 				   }
 				}
 				for (i=0; i<n_str; i++)

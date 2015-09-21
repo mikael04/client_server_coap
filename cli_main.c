@@ -19,9 +19,25 @@
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <string.h>
+#include <unistd.h>
+
+#define PORT 32012
+#define NUM_DE_OPCOES 30
+#define MAX_OPTIONS 10
+#define MAX_TAMANHO_TOKEN 10 //char
+#define MAX_TAMANHO_OPTION 24 //char
+#define MAX_TAMANHO_PAYLOAD 64 //char
+#define ACK_WAIT_TIMEOUT_SEC 0 
+#define ACK_WAIT_TIMEOUT_USEC 10000
+#define METHOD_PUT 0
+#define METHOD_POST 1
+
+#define MAX_LEN_OPTION 32
+#define MAX_VALUE_OPTION 64
 
 #define FUNC_ARG 0 //Recebendo via argumentos no cmd
 #define FUNC_STRINGS 1 //Recebendo via strings digitadas
+ //cli -op 11 var -op 11 temperature -p 123D
 
 #define DEBUG 1
 #define DEBUG_ID 0
@@ -43,30 +59,19 @@
 #define DEBUG_MONTA_OP 0
 #define DEBUG_MONTA_H_T 0
 #define DEBUG_SEPARA_STRING 0
-#define DEBUG_SEND_MSG 0
+#define DEBUG_SEND_MSG 1
 #define DEBUG_SEND_MSG_BUFFER 0
-#define DEBUG_MSG_RECEIVED 0
+#define DEBUG_MSG_RECEIVED 1
 #define DEBUG_ARGS 0
 #define DEBUG_PKT_ARG 0
 #define DEBUG_VER_BUF 0
 #define DEBUF_IMPRIMIR_BUF 1
-#define DEBUG_TIMEOUT 1
+#define DEBUG_TIMEOUT 0
 #define DEBUG_TOKEN_SETADO 0
+#define SAIR 1
 #define TOKEN_ALEATORIO 1
 
-#define PORT 32002
-#define NUM_DE_OPCOES 30
-#define MAX_OPTIONS 10
-#define MAX_TAMANHO_TOKEN 10 //char
-#define MAX_TAMANHO_OPTION 24 //char
-#define MAX_TAMANHO_PAYLOAD 64 //char
-#define ACK_WAIT_TIMEOUT_SEC 0 
-#define ACK_WAIT_TIMEOUT_USEC 10000
-#define METHOD_PUT 0
-#define METHOD_POST 1
 
-#define MAX_LEN_OPTION 32
-#define MAX_VALUE_OPTION 64
 
 #define erro_argumento_invalido 10
 #define erro_argumento_token_invalido 11
@@ -379,7 +384,7 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 #endif
 
 #if METHOD_POST									//Resposta(6)			
-			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x84))
+			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
 #endif
 #if METHOD_PUT
 			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
@@ -405,7 +410,7 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 				{
 					printf("São iguais\n");
 					pos[i] = 0;
-					*cont_msg = *cont_msg - 1;;
+					*cont_msg = *cont_msg - 1;
 					memset(buf_str[i], 0x00, 512);
 				}
 			}
@@ -922,11 +927,18 @@ short int corrige_len (uint8_t *buffer, short int size)
 	#endif
 
 		j = 1;
-		if(argc < 3)
+#if DEBUG && SAIR
+		if (0 == (strcmp(argv[0], "sair\0")))
+		{
+			printf("SAINDO\n");
+		}
+		else if(argc < 3)
+#else
+		if (arg <3)
+#endif
 		{
 			lida_erro_id(erro_falta_argumento,argc, argv);
 		}
-		//cli 
 		else if (0 != strcmp(argv[0],"cliente") && 0 != strcmp(argv[0],"cli"))
 		{
 			lida_erro_id(erro_prim_arg_invalido,argc, argv);
@@ -1128,29 +1140,29 @@ short int  conta_espc (char *buf)
 #endif
 		//CONEXAO
 		int fd;
-#ifdef IPV6
+/*#ifdef IPV6
     	struct sockaddr_in6 cliaddr;
 #else /* IPV6 */
     	struct sockaddr_in cliaddr;
-#endif /* IPV6 */
+//#endif /* IPV6 */
 
-#ifdef IPV6
+/*#ifdef IPV6
     	fd = socket(AF_INET6,SOCK_DGRAM,0);
 #else /* IPV6 */
     	fd = socket(AF_INET,SOCK_DGRAM,0);
-#endif /* IPV6 */
+//#endif /* IPV6 */
 
     	bzero(&cliaddr,sizeof(cliaddr));
     	socklen_t szcliaddr = sizeof(cliaddr);
-#ifdef IPV6
+/*#ifdef IPV6
     	cliaddr.sin6_family = AF_INET6;
-    	cliaddr.sin6_addr = in6addr_any;
+    	//cliaddr.sin6_addr = in6addr_any;
     	cliaddr.sin6_port = htons(PORT);
 #else /* IPV6 */
     	cliaddr.sin_family = AF_INET;
-    	cliaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    	cliaddr.sin_addr.s_addr = inet_addr("192.168.252.128");
     	cliaddr.sin_port = htons(PORT);
-#endif /* IPV6 */
+//#endif /* IPV6 */
     	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 		 	
 #if DEBUG && DEBUG_ARGS && FUNC_ARG
@@ -1207,6 +1219,7 @@ short int  conta_espc (char *buf)
 			else if ((op[0] =='1'))
 			{
 #endif
+				//cli -op 11 var -op 11 temperature -p 123C
 				fflush(stdin);
 				printf("Digite a mensagem:\n");
 				fgets(buf_out, 512, stdin);
@@ -1228,6 +1241,13 @@ short int  conta_espc (char *buf)
 				separa_string(string_sep, buf_out, n_str, len);
 
 				identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
+				if(0 == strcmp(buf_out, "sair\n\0"))
+				{
+					printf("Saindo 2\n");
+					sendto(fd, "sair", (size_t)6, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+					close(fd);
+					return 0;
+				}
 				memset(buf_out, 0x00, 512);
 				monta_pkt(&pkt3, (uint8_t *)buf_out);
 				printf("Mensagem enviada:\n");

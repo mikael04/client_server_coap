@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : cli_main.c
- Author      : Mikael
- Version     :
- Copyright   : Your copyright notice
- Description : 
- ============================================================================
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -22,24 +12,13 @@
 #include <unistd.h>
 
 #define PORT 5683
-#define NUM_DE_OPCOES 30
-#define MAX_OPTIONS 10
-#define MAX_TAMANHO_TOKEN 10 //char
-#define MAX_TAMANHO_OPTION 24 //char
-#define MAX_TAMANHO_PAYLOAD 64 //char
-#define ACK_WAIT_TIMEOUT_SEC 0 
-#define ACK_WAIT_TIMEOUT_USEC 10000
-#define METHOD_PUT 0
-#define METHOD_POST 1
 
-#define MAX_LEN_OPTION 32
-#define MAX_VALUE_OPTION 64
-
-#define FUNC_ARG 0 //Recebendo via argumentos no cmd
-#define FUNC_STRINGS 1 //Recebendo via strings digitadas
+#define BILLION  1E9
+#define SEC 3 //SLEEP_TIME
+#define NSEC 5E8 //SLEEP_TIME
  //cli -op 11 var -op 11 temperature -p 123D
 
-#define DEBUG 0
+#define DEBUG 1
 #define DEBUG_ID 0
 #define DEBUG_ID_ARGS 0
 #define DEBUG_ID_T 0
@@ -59,20 +38,37 @@
 #define DEBUG_MONTA_OP 0
 #define DEBUG_MONTA_H_T 0
 #define DEBUG_SEPARA_STRING 0
-#define DEBUG_SEND_MSG 1
+#define DEBUG_SEND_MSG 0
 #define DEBUG_SEND_MSG_BUFFER 0
-#define DEBUG_MSG_RECEIVED 1
+#define DEBUG_MSG_RECEIVED 0
 #define DEBUG_ARGS 0
 #define DEBUG_PKT_ARG 0
 #define DEBUG_VER_BUF 0
-#define DEBUF_IMPRIMIR_BUF 1
+#define DEBUF_IMPRIMIR_BUF 0
 #define DEBUG_TIMEOUT 0
 #define DEBUG_TOKEN_SETADO 0
+#define DEBUG_TIME_CONTROL 1
+#define DEBUG_TIME_ALL 0
+
+ //OPÇÕES
 #define SAIR 1
 #define TOKEN_ALEATORIO 1
+#define METHOD_PUT 0
+#define METHOD_POST 1
+#define NUM_DE_OPCOES 30
+#define MAX_OPTIONS 10
+#define MAX_TAMANHO_TOKEN 10 //char
+#define MAX_TAMANHO_OPTION 24 //char
+#define MAX_TAMANHO_PAYLOAD 64 //char
+#define ACK_WAIT_TIMEOUT_SEC 0 
+#define ACK_WAIT_TIMEOUT_USEC 10000
+#define MAX_LEN_OPTION 32
+#define MAX_VALUE_OPTION 64
+#define FUNC_ARG 0 //Recebendo via argumentos no cmd
+#define FUNC_STRINGS 1 //Recebendo via strings digitadas
 
 
-
+//Definição de erros
 #define erro_argumento_invalido 10
 #define erro_argumento_token_invalido 11
 #define erro_argumento_num_option_invalido 12
@@ -141,6 +137,14 @@
 	    coap_buffer_t payload;      /* Payload carried by the packet */
 	} coap_packet_t;
 
+	typedef struct 
+	{
+		double sec;
+		double min;
+		double hour;
+	} time_sec_min_hour;
+
+
 	void printf_header (coap_header_t *hdr)
 	{
 		printf("Header:\n");
@@ -193,6 +197,8 @@
 	}
 
 	void tempo_agora (char *tempo);
+	void get_time (struct timespec *time_now);
+	float calc_time_sub (struct timespec *start, struct timespec *stop);
 
 void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out_p, short int *cont_msg, short int *pos, char buf_str[][512])
 {
@@ -328,7 +334,7 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 				//exit (1);
 }
 
-void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos)
+void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start)
 {
 	int i, j;
 #if DEBUG && DEBUG_MSG_RECEIVED
@@ -408,6 +414,14 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 				if (cont == (buf_in[0] & 0x0F))
 				{
 					printf("Mensagem ACK recebida, buffer limpo\n");
+#if DEBUG && DEBUG_TIME_CONTROL
+					get_time(time_post);
+#if DEBUG_TIME_ALL
+					printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start->tv_sec, (int)time_start->tv_nsec, (int)time_post->tv_sec, (int)time_post->tv_nsec);
+#endif		    		
+		    		printf( "\nTime to send a POST request = %lf\n", calc_time_sub (time_start, time_post));
+#endif
+				   		
 					pos[i] = 0;
 					*cont_msg = *cont_msg - 1;
 					memset(buf_str[i], 0x00, 512);
@@ -443,7 +457,43 @@ void tempo_agora (char *tempo)
 	snprintf(tempo,40,"Hora: ""%d"":""%d"":""%d" " ""Data:""%d""/""%d", tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_mday, tm.tm_mon);
 	printf("Tempo agora = %s\n", tempo);
 }
-	//Recebendo mensagem com 00 00, cliente interpreta restante como 0, porém vem payload após 00 00
+
+void get_time (struct timespec *time_now)
+{
+	if( clock_gettime( CLOCK_REALTIME, time_now) == -1 )
+	{
+      perror( "clock gettime" );
+      exit( EXIT_FAILURE );
+    }
+}
+float calc_time_sub (struct timespec *start, struct timespec *stop)
+{
+	float tempo_decorrido;
+	tempo_decorrido = ( stop->tv_sec - start->tv_sec )
+          + ( stop->tv_nsec - start->tv_nsec )
+            / BILLION;
+	return tempo_decorrido;
+}
+/*float calc_time_sub (struct timespec *inic, struct timespec *stop)
+{
+	float tempo_decorrido;
+	tempo_decorrido = ( stop->tv_sec - start->tv_sec )
+          + ( stop->tv_nsec - start->tv_nsec )
+            / BILLION;
+	return tempo_decorrido;
+}*/
+
+
+void n_sleep (struct timespec *sleep_time)
+{
+	if(nanosleep(sleep_time, NULL) < 0)   
+   	{
+      	printf("Nano sleep system call failed \n");
+      	exit (0);
+   	}
+}
+
+//Recebendo mensagem com 00 00, cliente interpreta restante como 0, porém vem payload após 00 00
 short int corrige_len (uint8_t *buffer, short int size)
 {
 		short int i = 0;
@@ -1122,7 +1172,12 @@ short int  conta_espc (char *buf)
 	{
 #if DEBUG && DEBUG_PKT_ARG
 #endif
-		//Pacote
+		//Tempo
+		struct timespec time_start, time_post; //Só para não precisar alterar a função lida_msg
+#if DEBUG && DEBUG_TIME_CONTROL
+		struct timespec time_resend, time_put, sleep_time;
+		get_time(&time_start);
+#endif
 
 		//memset(pkt, 0, sizeof(pkt));
 #if DEBUG && DEBUG_PKT_ARG && FUNC_ARG
@@ -1202,10 +1257,13 @@ short int  conta_espc (char *buf)
 			else if ((op[0] =='1'))
 			{
 #endif
-				//cli -op 11 var -op 11 temperature -p 123C
 				fflush(stdin);
 				printf("Digite a mensagem:\n");
 				fgets(buf_out, 512, stdin);
+				//Tempo -> Após digitar mensagem
+#if DEBUG && DEBUG_TIME_CONTROL
+				get_time(&time_start);
+#endif
 				char *buf_out_p = buf_out;
 				short int i;
 				char buf_aux_opt_c2[60] = "";
@@ -1246,29 +1304,48 @@ short int  conta_espc (char *buf)
 				printf("cont_msg = %d\n",cont_msg);
 	#endif
 				send_msg (fd, cliaddr, buf_out, buf_out_p, &cont_msg,  pos, buf_str);
+#if DEBUG && DEBUG_TIME_CONTROL
+				get_time(&time_put);
+#if DEBUG_TIME_ALL
+				printf("time_start.sec = %d, time_start.nsec = %d\ntime_put.sec = %d, time_put.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_put.tv_sec, (int)time_put.tv_nsec);
+#endif
+    			printf( "\nTime to send a PUT request = %lf\n", calc_time_sub (&time_start, &time_put));
+#endif
+    
 #if DEBUG && DEBUG_VER_BUF
 				printf("1)");
 				printf_buffer_str (buf_str, 8);
 #endif
 				while (num_timeouts < 2)
-			   {
-				   if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
-				   {
+			   	{
+				   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+				   	{
 				   		perror("Error");
-				   }		
-				   if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
-				   {
+				   	}		
+				   	if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
+				   	{
+
+				   		printf("Entrando no não recebida msg, resending");
 	#if DEBUG && DEBUG_TIMEOUT
 				   		printf("buf in = %s\n", buf_in);
 	#endif
 				   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+#if DEBUG && DEBUG_TIME_CONTROL
+						time_resend.tv_sec = 0;
+				   		time_resend.tv_nsec = 0;				   		
+				   		get_time (&time_resend);
+#if DEBUG_TIME_ALL
+						printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
+#endif
+		    			printf( "\nTime to resend a POST request = %lf\n", calc_time_sub (&time_start, &time_resend));
+#endif
 				   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
 				   		num_timeouts++;
 				   }
 				   else
 				   {
 				   		num_timeouts = 2;
-				   		lida_msg_recebida (buf_in, buf_str, &cont_msg, pos);
+				   		lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start);
 #if DEBUG && DEBUG_VER_BUF
 				   		printf("2)");
 				   		printf_buffer_str (buf_str, 8);

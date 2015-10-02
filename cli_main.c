@@ -21,7 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define PORT 32012
+#define PORT 5683
 #define NUM_DE_OPCOES 30
 #define MAX_OPTIONS 10
 #define MAX_TAMANHO_TOKEN 10 //char
@@ -39,7 +39,7 @@
 #define FUNC_STRINGS 1 //Recebendo via strings digitadas
  //cli -op 11 var -op 11 temperature -p 123D
 
-#define DEBUG 1
+#define DEBUG 0
 #define DEBUG_ID 0
 #define DEBUG_ID_ARGS 0
 #define DEBUG_ID_T 0
@@ -262,11 +262,7 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 			printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
 #endif
 
-			//strncat(buf_out, tempo, 512);
 			buf_out_p=buf_out_p+(int)strlen(tempo);
-			printf("1buf_out = %s\n", buf_out_p);
-			printf("buf_out = %s\n", buf_out);
-			//strncat((char*)buf_out, tempo, 512);
 #if DEBUG && DEBUG_SEND_MSG
 			printf("\n");
 			printf("buf_out = %s, buf_out len = %d, buf_out size = %d\n", buf_out, strlen((char*)buf_out), sizeof(buf_out));
@@ -287,7 +283,6 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 #endif
 			sendto(fd, buf_out, rsplen, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
 			k=1;
-			printf("Enviando mensagem\n");
 			while(k==1)
 			{
 #if DEBUG && DEBUG_SEND_MSG
@@ -295,7 +290,9 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 #endif
 				for (m = 0; m<8; m++)
 				{
+#if DEBUG && DEBUG_VER_BUF
 					printf("pos [%d] = %d\n", m, pos[m]);
+#endif
 				}
 				if(ult_esc == 7)
 				{
@@ -402,13 +399,15 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 #endif
 					if(buf_in[2+j] == buf_str[i][2+j])
 					{
+#if DEBUG && DEBUG_MSG_RECEIVED
 						printf("buf_in = 0x%02X, buf_str = 0x%02X\n", buf_in[2+j], buf_str[i][2+j]);
+#endif
 						cont++;
 					}
 				}
 				if (cont == (buf_in[0] & 0x0F))
 				{
-					printf("São iguais\n");
+					printf("Mensagem ACK recebida, buffer limpo\n");
 					pos[i] = 0;
 					*cont_msg = *cont_msg - 1;
 					memset(buf_str[i], 0x00, 512);
@@ -416,7 +415,7 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 			}
 			else
 			{
-				printf("Mensagem não é resposta servidor\n");
+				printf("Mensagem não é ACK, mensagem incorreta\n");
 			}
 		}
 	}
@@ -675,7 +674,6 @@ short int corrige_len (uint8_t *buffer, short int size)
 	}*/
 	void add_payload (coap_packet_t *pkt, char *payload)
 	{
-		printf("strlen  = %d\n", strlen(payload));
 		if (strlen(payload) > 64)
 		{
 			lida_erro_add(erro_payload_excede_tamanho);
@@ -927,14 +925,14 @@ short int corrige_len (uint8_t *buffer, short int size)
 	#endif
 
 		j = 1;
-#if DEBUG && SAIR
+#if SAIR
 		if (0 == (strcmp(argv[0], "sair\0")))
 		{
 			printf("SAINDO\n");
 		}
 		else if(argc < 3)
 #else
-		if (arg <3)
+		if (argc <3)
 #endif
 		{
 			lida_erro_id(erro_falta_argumento,argc, argv);
@@ -1140,29 +1138,14 @@ short int  conta_espc (char *buf)
 #endif
 		//CONEXAO
 		int fd;
-/*#ifdef IPV6
-    	struct sockaddr_in6 cliaddr;
-#else /* IPV6 */
+
     	struct sockaddr_in cliaddr;
-//#endif /* IPV6 */
-
-/*#ifdef IPV6
-    	fd = socket(AF_INET6,SOCK_DGRAM,0);
-#else /* IPV6 */
     	fd = socket(AF_INET,SOCK_DGRAM,0);
-//#endif /* IPV6 */
-
     	bzero(&cliaddr,sizeof(cliaddr));
     	socklen_t szcliaddr = sizeof(cliaddr);
-/*#ifdef IPV6
-    	cliaddr.sin6_family = AF_INET6;
-    	//cliaddr.sin6_addr = in6addr_any;
-    	cliaddr.sin6_port = htons(PORT);
-#else /* IPV6 */
     	cliaddr.sin_family = AF_INET;
     	cliaddr.sin_addr.s_addr = inet_addr("192.168.252.128");
     	cliaddr.sin_port = htons(PORT);
-//#endif /* IPV6 */
     	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 		 	
 #if DEBUG && DEBUG_ARGS && FUNC_ARG

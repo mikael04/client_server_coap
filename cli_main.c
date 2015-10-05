@@ -11,7 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define PORT 5683
+#define PORT 32000
 
 #define BILLION  1E9
 #define SEC 3 //SLEEP_TIME
@@ -45,7 +45,7 @@
 #define DEBUG_PKT_ARG 0
 #define DEBUG_VER_BUF 0
 #define DEBUF_IMPRIMIR_BUF 0
-#define DEBUG_TIMEOUT 0
+#define DEBUG_TIMEOUT 1
 #define DEBUG_TOKEN_SETADO 0
 #define DEBUG_TIME_CONTROL 1
 #define DEBUG_TIME_ALL 0
@@ -53,6 +53,7 @@
  //OPÇÕES
 #define SAIR 1
 #define TOKEN_ALEATORIO 1
+#define NUM_TIMEOUT 5
 #define METHOD_PUT 0
 #define METHOD_POST 1
 #define NUM_DE_OPCOES 30
@@ -339,7 +340,7 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 	int i, j;
 #if DEBUG && DEBUG_MSG_RECEIVED
 	//printf("\nIniciando lida_msg_recebida, valores:\n");
-	printf("buf_in = %s\n", buf_in);
+	printf("\nbuf_in = %s\n", buf_in);
 	for (i=0; i<strlen(buf_in); i++)
 	{
 		printf("0x%02X ", (uint8_t) buf_in[i]);
@@ -1316,16 +1317,16 @@ short int  conta_espc (char *buf)
 				printf("1)");
 				printf_buffer_str (buf_str, 8);
 #endif
-				while (num_timeouts < 2)
+				while (num_timeouts < NUM_TIMEOUT)
 			   	{
 				   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
 				   	{
 				   		perror("Error");
 				   	}		
-				   	if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
+				   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
 				   	{
 
-				   		printf("Entrando no não recebida msg, resending");
+				   		printf("Entrando no não recebida msg, resending\n");
 	#if DEBUG && DEBUG_TIMEOUT
 				   		printf("buf in = %s\n", buf_in);
 	#endif
@@ -1344,7 +1345,7 @@ short int  conta_espc (char *buf)
 				   }
 				   else
 				   {
-				   		num_timeouts = 2;
+				   		num_timeouts = NUM_TIMEOUT;
 				   		lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start);
 #if DEBUG && DEBUG_VER_BUF
 				   		printf("2)");

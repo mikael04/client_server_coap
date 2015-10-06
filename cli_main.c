@@ -11,7 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define PORT 32000
+#define PORT 32012
 
 #define BILLION  1E9
 #define SEC 3 //SLEEP_TIME
@@ -1176,7 +1176,7 @@ short int  conta_espc (char *buf)
 		//Tempo
 		struct timespec time_start, time_post; //Só para não precisar alterar a função lida_msg
 #if DEBUG && DEBUG_TIME_CONTROL
-		struct timespec time_resend, time_put, sleep_time;
+		struct timespec time_resend, time_put;
 		get_time(&time_start);
 #endif
 

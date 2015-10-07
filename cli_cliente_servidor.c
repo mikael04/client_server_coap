@@ -13,6 +13,8 @@
 
 #define PORT 32012
 #define STRING_SERV 1
+#define METHOD_PUT 0
+#define METHOD_POST 1
 
 #define BILLION  1E9
 #define SEC 3 //SLEEP_TIME
@@ -45,26 +47,26 @@
 #define DEBUG_PKT_ARG 0
 #define DEBUG_VER_BUF 0
 #define DEBUF_IMPRIMIR_BUF 0
-#define DEBUG_TIMEOUT 1
+#define DEBUG_TIMEOUT 0
 #define DEBUG_TOKEN_SETADO 0
 #define DEBUG_TIME_CONTROL 1
 #define DEBUG_TIME_ALL 0
 #define DEBUG_WHILE 0
 #define DEBUG_PRINT_CLI_SERV 0
+#define DEBUG_WHILE_ORDER 0
 
  //OPÇÕES
 #define SAIR 1
+#define TIME_CONTROL //Se for sempre necessário calcular tempo
 #define TOKEN_ALEATORIO 1
-#define NUM_TIMEOUT 5
-#define METHOD_PUT 0
-#define METHOD_POST 1
+#define NUM_TIMEOUT 5   //SE SELECIONAR 0, SE TORNA PUT (NAO TENTA REENVIAR)
 #define NUM_DE_OPCOES 30
 #define MAX_OPTIONS 10
 #define MAX_TAMANHO_TOKEN 10 //char
 #define MAX_TAMANHO_OPTION 24 //char
 #define MAX_TAMANHO_PAYLOAD 64 //char
-#define ACK_WAIT_TIMEOUT_SEC 0
-#define ACK_WAIT_TIMEOUT_USEC 10000
+#define ACK_WAIT_TIMEOUT_SEC 2
+#define ACK_WAIT_TIMEOUT_USEC 0
 #define MAX_LEN_OPTION 32
 #define MAX_VALUE_OPTION 64
 #define FUNC_ARG 0 //Recebendo via argumentos no cmd
@@ -287,6 +289,7 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 			printf("\n");
 #endif
 			int rsplen = strlen(buf_out);
+
 #if DEBUG && DEBUG_SEND_MSG
 			printf("rsplen = %d\n", (int) rsplen);
 #endif
@@ -337,7 +340,7 @@ void send_msg (int fd, struct sockaddr_in servaddr, char *buf_out, char *buf_out
 				//exit (1);
 }
 
-void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start)
+int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start)
 {
 	int i, j;
 #if DEBUG && DEBUG_MSG_RECEIVED
@@ -371,71 +374,74 @@ void lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, 
 		if (pos[i] == 1)
 		{
 #if DEBUG && DEBUG_MSG_RECEIVED
-		//printf("entrando no if \n");
-#endif
-#if DEBUG && DEBUG_MSG_RECEIVED
-		printf("buf_in[%d] = 0x%02X\n", i, buf_in[0]);
-		printf("buf_str[%d] = 0x%02X\n", i, buf_str[0][0]);
-		printf("buf_in[%d] = 0x%02X\n", i+1, buf_in[1]);
-		//if (buf_in[1] & 0xFF == 0x84)
-		if ((buf_in[1] & 0xFF)== 0x84)
-		{
-			printf("É igual\n");
-		}
-		else
-		{
-			printf("Não é igual\n");
-		}
-		printf("buf_str[%d] = 0x%02X\n", i+1, buf_str[0][1]);
-#endif
-
-#if METHOD_POST									//Resposta(6)			
-			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
-#endif
-#if METHOD_PUT
-			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
-#endif
+			//printf("entrando no if \n");
+	#endif
+	#if DEBUG && DEBUG_MSG_RECEIVED
+			printf("buf_in[%d] = 0x%02X\n", i, buf_in[0]);
+			printf("buf_str[%d] = 0x%02X\n", i, buf_str[0][0]);
+			printf("buf_in[%d] = 0x%02X\n", i+1, buf_in[1]);
+			//if (buf_in[1] & 0xFF == 0x84)
+			if ((buf_in[1] & 0xFF)== 0x84)
 			{
-#if DEBUG && DEBUG_MSG_RECEIVED
+				printf("É igual\n");
+			}
+			else
+			{
+				printf("Não é igual\n");
+			}
+			printf("buf_str[%d] = 0x%02X\n", i+1, buf_str[0][1]);
+	#endif
+
+	#if METHOD_POST									//Resposta(6)			
+			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
+	#endif
+	#if METHOD_PUT
+			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
+	#endif
+			{
+	#if DEBUG && DEBUG_MSG_RECEIVED
 				//printf("entrando na comparacao \n");
-#endif
+	#endif
 				int cont = 0;
 				for (j=0; j<(buf_in[0] & 0x0F); j++)
 				{
-#if DEBUG && DEBUG_MSG_RECEIVED
+	#if DEBUG && DEBUG_MSG_RECEIVED
 					printf("entrando no for buf_in\n");
 					printf("j = %d\n", j);
-#endif
+	#endif
 					if(buf_in[2+j] == buf_str[i][2+j])
 					{
-#if DEBUG && DEBUG_MSG_RECEIVED
+	#if DEBUG && DEBUG_MSG_RECEIVED
 						printf("buf_in = 0x%02X, buf_str = 0x%02X\n", buf_in[2+j], buf_str[i][2+j]);
-#endif
+	#endif
 						cont++;
 					}
 				}
 				if (cont == (buf_in[0] & 0x0F))
 				{
 					printf("Mensagem ACK recebida, buffer limpo\n");
-#if DEBUG && DEBUG_TIME_CONTROL
+	#if DEBUG && DEBUG_TIME_CONTROL
 					get_time(time_post);
-#if DEBUG_TIME_ALL
-					printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start->tv_sec, (int)time_start->tv_nsec, (int)time_post->tv_sec, (int)time_post->tv_nsec);
-#endif		    		
-		    		printf( "\nTime to send a POST request = %lf\n", calc_time_sub (time_start, time_post));
-#endif
+	#if DEBUG_TIME_ALL
+					printf("time_start.sec = %d, time_start.nsec = %d\ntime_post_ACK.sec = %d, time_post_ACK.nsec = %d", (int)time_start->tv_sec, (int)time_start->tv_nsec, (int)time_post->tv_sec, (int)time_post->tv_nsec);
+	#endif		    		
+		    		printf( "\nHow long to receive ACK in a POST request = %lf\n", calc_time_sub (time_start, time_post));
+	#endif
 				   		
 					pos[i] = 0;
 					*cont_msg = *cont_msg - 1;
 					memset(buf_str[i], 0x00, 512);
+					return 1;
 				}
 			}
 			else
 			{
 				printf("Mensagem não é ACK, mensagem incorreta\n");
+				return 0;
 			}
 		}
 	}
+	return 0;
 }
 
 void printf_buffer_str(char buf[][512], int num_linhas)
@@ -1176,9 +1182,16 @@ short int  conta_espc (char *buf)
 #if DEBUG && DEBUG_PKT_ARG
 #endif
 		//Tempo
-		struct timespec time_start, time_post; //Só para não precisar alterar a função lida_msg
+		struct timespec time_start; //Só para não precisar alterar a função lida_msg
+		
+#if METHOD_POST
+		struct timespec time_post, time_resend, time_post_send;
+#else
+	#if METHOD_PUT
+		struct timespec time_put, time_resend, time_post;
+	#endif
+#endif
 #if DEBUG && DEBUG_TIME_CONTROL
-		struct timespec time_resend, time_put;
 		get_time(&time_start);
 #endif
 
@@ -1307,13 +1320,33 @@ short int  conta_espc (char *buf)
 #if DEBUG && DEBUG_SEND_MSG
 			printf("cont_msg = %d\n",cont_msg);
 #endif
+
+#if METHOD_POST
 			send_msg (fd, cliaddr, buf_out, buf_out_p, &cont_msg,  pos, buf_str);
-#if DEBUG && DEBUG_TIME_CONTROL
-			get_time(&time_put);
-#if DEBUG_TIME_ALL
-			printf("time_start.sec = %d, time_start.nsec = %d\ntime_put.sec = %d, time_put.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_put.tv_sec, (int)time_put.tv_nsec);
+#else
+	#if METHOD_PUT
+			sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+	#endif
 #endif
-			printf( "\nTime to send a PUT request = %lf\n", calc_time_sub (&time_start, &time_put));
+#if DEBUG_TIME_CONTROL
+	#if METHOD_PUT
+		time_put.tv_sec = 0;
+   		time_put.tv_nsec = 0;				   		
+   		get_time (&time_put);
+		#if DEBUG && DEBUG_TIME_ALL
+				printf("time_start.sec = %d, time_start.nsec = %d\ntime_put.sec = %d, time_put.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_put.tv_sec, (int)time_put.tv_nsec);
+		#endif
+		printf( "\nHow long to send a PUT request = %lf\n", calc_time_sub (&time_start, &time_put));
+	#endif
+	#if METHOD_POST
+		time_post_send.tv_sec = 0;
+   		time_post_send.tv_nsec = 0;				   		
+   		get_time (&time_post_send);
+		#if DEBUG && DEBUG_TIME_ALL
+				printf("time_start.sec = %d, time_start.nsec = %d\ntime_post.sec = %d, time_post.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_post_send.tv_sec, (int)time_post_send.tv_nsec);
+		#endif
+		printf( "\nHow long to send a POST request = %lf\n", calc_time_sub (&time_start, &time_post_send));		
+	#endif
 #endif
 
 #if DEBUG && DEBUG_VER_BUF
@@ -1329,30 +1362,16 @@ short int  conta_espc (char *buf)
 			   	{
 			   		perror("Error");
 			   	}		
-			   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) < 0)
+			   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) >= 0)
 			   	{
 
-			   		printf("Entrando no não recebida msg, resending\n");
-#if DEBUG && DEBUG_TIMEOUT
-			   		printf("buf in = %s\n", buf_in);
+			   		#if DEBUG && DEBUG_WHILE_ORDER
+			   		printf("Entrando no ELSE \n");
 #endif
-			   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
-#if DEBUG && DEBUG_TIME_CONTROL
-					time_resend.tv_sec = 0;
-			   		time_resend.tv_nsec = 0;				   		
-			   		get_time (&time_resend);
-#if DEBUG_TIME_ALL
-					printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
-#endif
-	    			printf( "\nTime to resend a POST request = %lf\n", calc_time_sub (&time_start, &time_resend));
-#endif
-			   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
-			   		num_timeouts++;
-			   }
-			   else
-			   {
-			   		num_timeouts = NUM_TIMEOUT;
-			   		lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start);
+			   		if (1 == lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start))
+			   		{
+			   			num_timeouts = NUM_TIMEOUT;
+			   		}
 #if DEBUG && DEBUG_VER_BUF
 			   		printf("2)");
 			   		printf_buffer_str (buf_str, 8);
@@ -1365,7 +1384,30 @@ short int  conta_espc (char *buf)
 			   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
 			   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
 			   		printf("\n");
+#endif			   		
+			   }
+			   else
+			   {
+			   		printf("Entrando no não recebida msg, resending\n");
+#if DEBUG && DEBUG_TIMEOUT
+			   		printf("buf in = %s\n", buf_in);
 #endif
+			   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+#if DEBUG && DEBUG_TIME_CONTROL
+					time_resend.tv_sec = 0;
+			   		time_resend.tv_nsec = 0;				   		
+			   		get_time (&time_resend);
+#if DEBUG && DEBUG_TIME_ALL
+					printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
+#endif
+	    			printf( "\nHow long to resend a POST request = %lf\n", calc_time_sub (&time_start, &time_resend));
+#endif
+			   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
+			   		num_timeouts++;
+			   		if(num_timeouts == NUM_TIMEOUT)
+			   		{
+			   			printf("Programa fechando, não obteve resposta do servidor\n");
+			   		}
 			   }
 			}
 #if DEBUG && DEBUG_WHILE
@@ -1378,9 +1420,6 @@ short int  conta_espc (char *buf)
 			free(string_sep);
 #if DEBUG && DEBUG_WHILE
 		printf("PASSEI FREE\n");
-#endif
-#if DEBUG && DEBUG_VER_BUF
-		}
 #endif
 #if DEBUG && DEBUG_WHILE
 		printf("Saindo While\n");

@@ -5,10 +5,10 @@
 
 #include <stdlib.h>
 
-#define DEBUG_END 0
+#define DEBUG_END 1
 #define TEMP_1_CHAR 0
 #define TEMP_STRING 1
-#define DEBUG_STRUCT_TIME 0
+#define DEBUG_STRUCT_TIME 1
 
 static char light = '0';
 static char temperature[4] = "0";
@@ -50,7 +50,7 @@ short int get_var_time ()
 var_cli create_var_time ()
 {
 	var_cli variable;
-	variable.tempo = 6; //Segundos, para testes
+	variable.tempo = 5; //Segundos, para testes
 	return variable;
 }
 

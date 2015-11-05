@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include "cli_main.h"
 
-#define PORT 32012
+#define PORT 32011
 
 #define STRING_SERV 1
 #define METHOD_PUT 0
@@ -1161,7 +1161,7 @@ short int  conta_espc (char *buf)
     	bzero(&cliaddr,sizeof(cliaddr));
     	socklen_t szcliaddr = sizeof(cliaddr);
     	cliaddr.sin_family = AF_INET;
-    	cliaddr.sin_addr.s_addr = inet_addr("192.168.252.128");
+    	cliaddr.sin_addr.s_addr = inet_addr("192.168.1.16");
     	cliaddr.sin_port = htons(PORT);
     	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 		 	
@@ -1188,7 +1188,7 @@ short int  conta_espc (char *buf)
 		printf("\n");
 		char buf_in[512], buf_out[512], buf_str[8][512];
 		char string_aux[50];
-		strncat(string_aux, "cli -op 11 var -op 11 temperature -p 0810D",50);
+		strncat(string_aux, "cli -op 11 var -op 11 temperature -p 15",50);
 		int str_len = strlen(string_aux);
 		string_aux[str_len] = '\n';
 		string_aux[str_len+1] = '\0';
@@ -1218,7 +1218,13 @@ short int  conta_espc (char *buf)
 #else 
 			fflush(stdin);
 			printf("Digite a mensagem:\n");
-			fgets(buf_out, 512, stdin);
+			if(fgets(buf_out, 512, stdin) == NULL)
+			{
+				printf("Erro fgets\n");
+				printf("Saindo do programa\n");
+				exit(0);
+			}
+			
 	#if DEBUG && DEBUG_PRINT_CLI_SERV 
 			printf_buffer((uint8_t *)buf_out);
 	#endif

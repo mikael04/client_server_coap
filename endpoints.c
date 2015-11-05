@@ -326,5 +326,3 @@ void build_rsp(void)
         ep++;
     }
 }
-
-

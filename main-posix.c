@@ -29,7 +29,7 @@
 
 //cli -op 11 var -op 11 temperature -p 1234ddAS
 
-#define PORT_CLI 32015
+#define PORT_SERV 32012
 //#define PORT_SERV 7891 //EMBARCADO NÃO REENVIA, CLIENTE ENVIARÀ -> não usada
 #define TIME 0
 #define DEBUG_MAIN 1 //Debug Geral
@@ -39,6 +39,7 @@
 #define DEBUG_TIME 0 //DEBUG com tempo padrão (não obtido do endpoint)
 #define DEBUG_GET_TIME 1 //DEBUG com tempo padrão (não obtido do endpoint)
 #define DEBUG_SERV 1
+#define DEBUG_CLI 0
 
 //DEBUG
 #define TIME_CALL_CLI_SEC 0.0166667*60*6 //0.0166667*60 = 1 segundo
@@ -48,7 +49,7 @@
 #define DEBUG_TIME_SEC 1
 #define DEBUG_TIME_NSEC 0
 
-#define PORCENTAGEM 60
+#define PORCENTAGEM 100
 
 
 void *thr_func_cli (void *arg)
@@ -58,7 +59,7 @@ void *thr_func_cli (void *arg)
     while(clin<5)
     {
         nanosleep(call_cli, (struct timespec *) NULL);
-#if DEBUG_MAIN
+#if DEBUG_MAIN && DEBUG_CLI
         printf("Child 1 pid, Chamando %d vez\n", clin);
         printf("Get = %d\n", get_var_time());
         printf("call_cli.tempo = %d\n", (int) call_cli->tv_sec);
@@ -78,11 +79,8 @@ void servidor (struct timespec *arg)
         req.tv_sec = DEBUG_TIME_SEC;
         req.tv_nsec = DEBUG_TIME_NSEC;
 #endif
-
-    printf("Estou debugando 7\n");
 #if DEBUG_MAIN & DEBUG_GET_TIME
     //printf("1) Get = %d\n", get_var_time());
-    printf("Estou debugando 8\n");
 #endif
 #if DEBUG_MAIN && DEBUG_TIME
         *call_cli->tv_sec = TIME_CALL_CLI_SEC;
@@ -90,7 +88,6 @@ void servidor (struct timespec *arg)
 #endif
     srand (time(NULL)); //RANDOM FUNCTION
     int fd_client, w=1;
-    printf("Estou debugando 5\n");
 
     //Creating Bufs
     uint8_t buf[4096];
@@ -117,26 +114,17 @@ void servidor (struct timespec *arg)
 #else /* IPV6 */
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr("192.168.252.128");
-    servaddr.sin_port = htons(PORT_CLI);
+    servaddr.sin_port = htons(PORT_SERV);
 #endif /* IPV6 */
-    printf("Estou debugando 4\n");
     bind(fd_client,(struct sockaddr *)&servaddr, sizeof(servaddr));
+    printf("Iniciando servidor\n");
 
     while(w<5)
     {
         int n, rc;
         socklen_t len = sizeof(servaddr);
         coap_packet_t pkt;
-
-        printf("Estou debugando\n");
-#if DEBUG_SERV
-        printf("Estou debugando\n");
-#endif
         n = recvfrom(fd_client, buf, sizeof(buf), 0, (struct sockaddr *)&servaddr, &len);
-        #if DEBUG_SERV
-        printf("Estou debugando 2\n");
-#endif
-        printf("Estou debugando 2\n");
 #if DEBUG_MAIN
         printf("Received this: ");
         coap_dump(buf, n, true);
@@ -219,18 +207,17 @@ int main(int argc, char **argv)
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return EXIT_FAILURE;
     }
-    printf("thread iniciando \n");
     /*if ((rc = pthread_create(&thr[1], NULL, thr_func_serv_recv, &call_cli)))
     {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return EXIT_FAILURE;
     }*/
-    servidor(&call_cli);
+    //servidor(&call_cli);
 
     for (i = 0; i < NUM_THREADS-1; ++i)
     {
         pthread_join(thr[i], NULL);
     }
-
+    printf("Saindo Embarcado\n");
     return 0;
 }

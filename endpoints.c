@@ -118,9 +118,9 @@ static int handle_post_time_freq(coap_rw_buffer_t *scratch, const coap_packet_t 
 #if DEBUG_END && DEBUG_STRUCT_TIME
 		printf("1)Time_freq = %d\n", get_var_time());
 #endif		
-		printf("1)Time_freq = %d\n", get_var_time());
+		//printf("1)Time_freq = %d\n", get_var_time());
 		set_var_time(strtol ((char *)inpkt->payload.p, &end, 0));
-		printf("2)Time_freq = %d\n", get_var_time());
+		//printf("2)Time_freq = %d\n", get_var_time());
 #if DEBUG_END && DEBUG_STRUCT_TIME
 		printf("2)Time_freq = %d\n", get_var_time());
 #endif

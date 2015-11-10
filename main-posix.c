@@ -29,17 +29,16 @@
 
 //cli -op 11 var -op 11 temperature -p 1234ddAS
 
-#define PORT_SERV 32012
+#define PORT_CLI 32015
 //#define PORT_SERV 7891 //EMBARCADO NÃO REENVIA, CLIENTE ENVIARÀ -> não usada
 #define TIME 0
 #define DEBUG_MAIN 1 //Debug Geral
-#define DEBUG_SAIR 0
+#define DEBUG_SAIR 1
 #define DEBUG_SEND_ANOTHER_SERV 0
 #define DEBUG_FORK 0
 #define DEBUG_TIME 0 //DEBUG com tempo padrão (não obtido do endpoint)
 #define DEBUG_GET_TIME 1 //DEBUG com tempo padrão (não obtido do endpoint)
 #define DEBUG_SERV 1
-#define DEBUG_CLI 0
 
 //DEBUG
 #define TIME_CALL_CLI_SEC 0.0166667*60*6 //0.0166667*60 = 1 segundo
@@ -49,28 +48,28 @@
 #define DEBUG_TIME_SEC 1
 #define DEBUG_TIME_NSEC 0
 
-#define PORCENTAGEM 100
+#define PORCENTAGEM 60
 
 
 void *thr_func_cli (void *arg)
 {
     struct timespec *call_cli = (struct timespec *) arg;
     int clin = 0;
-    while(clin<5)
+    while(clin<1)
     {
         nanosleep(call_cli, (struct timespec *) NULL);
-#if DEBUG_MAIN && DEBUG_CLI
+#if DEBUG_MAIN
         printf("Child 1 pid, Chamando %d vez\n", clin);
         printf("Get = %d\n", get_var_time());
         printf("call_cli.tempo = %d\n", (int) call_cli->tv_sec);
 #endif
-        //main_cli();
+        main_cli();
         clin++;
     }
     pthread_exit(NULL);
 }
 
-void servidor (struct timespec *arg)
+void *thr_func_serv_recv (void *arg)
 {
     struct timespec *call_cli = (struct timespec *) arg;
         /*SLEEP - TEST*/
@@ -87,7 +86,7 @@ void servidor (struct timespec *arg)
         *call_cli->tv_nsec = TIME_CALL_CLI_NSEC;
 #endif
     srand (time(NULL)); //RANDOM FUNCTION
-    int fd_client, w=1;
+    int fd_client;
 
     //Creating Bufs
     uint8_t buf[4096];
@@ -113,13 +112,12 @@ void servidor (struct timespec *arg)
     servaddr.sin6_port = htons(PORT_CLI);
 #else /* IPV6 */
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("192.168.252.128");
-    servaddr.sin_port = htons(PORT_SERV);
+    servaddr.sin_addr.s_addr = inet_addr("192.168.1.16");
+    servaddr.sin_port = htons(32015);
 #endif /* IPV6 */
     bind(fd_client,(struct sockaddr *)&servaddr, sizeof(servaddr));
-    printf("Iniciando servidor\n");
 
-    while(w<5)
+    while(1)
     {
         int n, rc;
         socklen_t len = sizeof(servaddr);
@@ -178,10 +176,13 @@ void servidor (struct timespec *arg)
                 {
                     printf("\n\nSending\n\n");
                     sendto(fd_client, buf, rsplen, 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
+                }
+                else
+                {
+                    printf("\n\nNot sending, simulando erro de comunicação\n\n");
                 }                    
             }
         }
-        w++;
     }
     close(fd_client);    
     pthread_exit(NULL);
@@ -202,22 +203,23 @@ int main(int argc, char **argv)
 
     int rc;
 
+    printf("thread iniciando cliente \n");
     if ((rc = pthread_create(&thr[0], NULL, thr_func_cli, &call_cli)))
     {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return EXIT_FAILURE;
     }
-    /*if ((rc = pthread_create(&thr[1], NULL, thr_func_serv_recv, &call_cli)))
+    printf("thread iniciando servidor \n");
+    if ((rc = pthread_create(&thr[1], NULL, thr_func_serv_recv, &call_cli)))
     {
         fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
         return EXIT_FAILURE;
-    }*/
-    //servidor(&call_cli);
+    }
 
-    for (i = 0; i < NUM_THREADS-1; ++i)
+    for (i = 0; i < NUM_THREADS; ++i)
     {
         pthread_join(thr[i], NULL);
     }
-    printf("Saindo Embarcado\n");
+
     return 0;
 }

@@ -12,11 +12,11 @@
 #include <unistd.h>
 #include "cli_main.h"
 
-#define PORT 32011
+#define PORT 32012
 
 #define STRING_SERV 1
-#define METHOD_PUT 0
-#define METHOD_POST 1
+#define METHOD_PUT 1
+#define METHOD_POST 0
 
 #define BILLION  1E9
 #define SEC 3 //SLEEP_TIME
@@ -47,6 +47,7 @@
 #define DEBUG_MSG_RECEIVED 0
 #define DEBUG_ARGS 0
 #define DEBUG_PKT_ARG 0
+#define DEBUG_PUT 0
 #define DEBUG_VER_BUF 0
 #define DEBUF_IMPRIMIR_BUF 0
 #define DEBUG_TIMEOUT 0
@@ -117,13 +118,13 @@
 	void printf_token (coap_buffer_t *token)
 	{
 		printf("Token:\n");
-	    printf("  size  0x%d\n", token->len);
+	    printf("  size  0x%d\n",(int) token->len);
 	    printf("  token %s\n", token->p);
 	}
 	void printf_payload (coap_buffer_t *payload)
 	{
 		printf("Payload:\n");
-	    printf("  size  0x%d\n", payload->len);
+	    printf("  size  0x%d\n",(int) payload->len);
 	    printf("  payload %s\n", payload->p);
 	}
 
@@ -132,7 +133,7 @@
 		printf("Option:\n");
 	    printf("  num  %d\n", (int)opt->num);
 	    printf("  num  0x%02x\n", opt->num);
-	    printf("  option buf len %d\n", opt->buf.len);
+	    printf("  option buf len %d\n",(int) opt->buf.len);
 	    printf("  option buf p %s\n", opt->buf.p);
 	}
 
@@ -1134,7 +1135,7 @@ short int  conta_espc (char *buf)
 		struct timespec time_post, time_resend, time_post_send;
 #else
 	#if METHOD_PUT
-		struct timespec time_put, time_resend, time_post;
+		struct timespec time_put;
 	#endif
 #endif
 #if DEBUG && DEBUG_TIME_CONTROL
@@ -1159,10 +1160,12 @@ short int  conta_espc (char *buf)
     	struct sockaddr_in cliaddr;
     	fd = socket(AF_INET,SOCK_DGRAM,0);
     	bzero(&cliaddr,sizeof(cliaddr));
+#if METHOD_POST
     	socklen_t szcliaddr = sizeof(cliaddr);
+#endif
     	cliaddr.sin_family = AF_INET;
-    	cliaddr.sin_addr.s_addr = inet_addr("192.168.1.16");
-    	cliaddr.sin_port = htons(PORT);
+    	cliaddr.sin_addr.s_addr = inet_addr("192.168.1.13");
+    	cliaddr.sin_port = htons(32011);
     	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 		 	
 #if DEBUG && DEBUG_ARGS && FUNC_ARG
@@ -1180,15 +1183,17 @@ short int  conta_espc (char *buf)
 		printf_buffer_m (buffer, buf_siz));
 #endif
 		//TIMEOUT
+#if METHOD_POST
 		struct timeval tv;
 		tv.tv_sec = ACK_WAIT_TIMEOUT_SEC;
 	   	tv.tv_usec = ACK_WAIT_TIMEOUT_USEC;
 	   	short int num_timeouts = 0;
-	  	//
+		char buf_str[8][512];
+#endif
 		printf("\n");
-		char buf_in[512], buf_out[512], buf_str[8][512];
+		char buf_in[512], buf_out[512];
 		char string_aux[50];
-		strncat(string_aux, "cli -op 11 var -op 11 temperature -p 15",50);
+		strncat(string_aux, "cli -op 11 var -op 11 temperature -p 0810D",50);
 		int str_len = strlen(string_aux);
 		string_aux[str_len] = '\n';
 		string_aux[str_len+1] = '\0';
@@ -1199,8 +1204,10 @@ short int  conta_espc (char *buf)
 
 		
 		//int ult_esc = -1;
+#if METHOD_POST
 		short int cont_msg = 0;
 		short int pos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+#endif
 		//Mensagem
 		 	//buffer
 			coap_packet_t pkt3;
@@ -1208,23 +1215,19 @@ short int  conta_espc (char *buf)
 			cria_pkt(&pkt3, token);
 			memset(buf_out, 0x00, 512);
 			memset(buf_in, 0x00, 512);
+#if METHOD_POST
 			num_timeouts = 0;
+#endif
 
 #if STRING_SERV
-			strncat(buf_out, string_aux, 512);				
+			strncat(buf_out, string_aux, 511);				
 	#if DEBUG && DEBUG_PRINT_CLI_SERV 
 			printf_buffer((uint8_t *)buf_out);
 	#endif
 #else 
 			fflush(stdin);
 			printf("Digite a mensagem:\n");
-			if(fgets(buf_out, 512, stdin) == NULL)
-			{
-				printf("Erro fgets\n");
-				printf("Saindo do programa\n");
-				exit(0);
-			}
-			
+			fgets(buf_out, 512, stdin);
 	#if DEBUG && DEBUG_PRINT_CLI_SERV 
 			printf_buffer((uint8_t *)buf_out);
 	#endif
@@ -1233,7 +1236,9 @@ short int  conta_espc (char *buf)
 #if DEBUG && DEBUG_TIME_CONTROL
 			get_time(&time_start);
 #endif
+#if METHOD_POST
 			char *buf_out_p = buf_out;
+#endif
 			short int i;
 			char buf_aux_opt_c2[60] = "";
 			short int buf_aux_opt_n2[10];
@@ -1301,75 +1306,81 @@ short int  conta_espc (char *buf)
 	#endif
 #endif
 
-#if DEBUG && DEBUG_VER_BUF
+#if DEBUG && DEBUG_VER_BUF && METHOD_POST
 			printf("1)");
 			printf_buffer_str (buf_str, 8);
 #endif
-#if DEBUG && DEBUG_WHILE
-		printf("Entrando while TIMEOUT\n");
-#endif
-			while (num_timeouts < NUM_TIMEOUT)
-		   	{
-			   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+#if METHOD_POST
+				while (num_timeouts < NUM_TIMEOUT)
 			   	{
-			   		perror("Error");
-			   	}		
-			   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) >= 0)
-			   	{
+				   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+				   	{
+				   		perror("Error");
+				   	}		
+				   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) >= 0)
+				   	{
 
-			   		#if DEBUG && DEBUG_WHILE_ORDER
-			   		printf("Entrando no ELSE \n");
+				   		#if DEBUG && DEBUG_WHILE_ORDER
+				   		printf("Entrando no ELSE \n");
+	#endif
+				   		if (1 == lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start))
+				   		{
+				   			num_timeouts = NUM_TIMEOUT;
+				   		}
+	#if DEBUG && DEBUG_VER_BUF
+				   		printf("2)");
+				   		printf_buffer_str (buf_str, 8);
+	#endif
+	#if DEBUG && DEBUG_TIMEOUT
+				   		printf("msg received = ");
+				   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
+				   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
+				   		printf("msg received = ");
+				   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
+				   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
+				   		printf("\n");
+	#endif			   		
+				   }
+				   else
+				   {
+				   		printf("Entrando no não recebida msg, resending\n");
+	#if DEBUG && DEBUG_TIMEOUT
+				   		printf("buf in = %s\n", buf_in);
+	#endif
+				   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+	#if DEBUG && DEBUG_TIME_CONTROL
+						time_resend.tv_sec = 0;
+				   		time_resend.tv_nsec = 0;				   		
+				   		get_time (&time_resend);
+	#if DEBUG && DEBUG_TIME_ALL
+						printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
+	#endif
+		    			printf( "\nHow long to resend a POST request = %lf\n", calc_time_sub (&time_start, &time_resend));
+	#endif
+				   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
+				   		num_timeouts++;
+				   		if(num_timeouts == NUM_TIMEOUT)
+				   		{
+				   			printf("Programa fechando, não obteve resposta do servidor\n");
+				   		}
+				   }
+				}
+	#if DEBUG && DEBUG_WHILE
+			printf("Saindo While TIMEOUT\n");
+	#endif
+
 #endif
-			   		if (1 == lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start))
-			   		{
-			   			num_timeouts = NUM_TIMEOUT;
-			   		}
-#if DEBUG && DEBUG_VER_BUF
-			   		printf("2)");
-			   		printf_buffer_str (buf_str, 8);
-#endif
-#if DEBUG && DEBUG_TIMEOUT
-			   		printf("msg received = ");
-			   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
-			   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
-			   		printf("msg received = ");
-			   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
-			   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
-			   		printf("\n");
-#endif			   		
-			   }
-			   else
-			   {
-			   		printf("Entrando no não recebida msg, resending\n");
-#if DEBUG && DEBUG_TIMEOUT
-			   		printf("buf in = %s\n", buf_in);
-#endif
-			   		sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
-#if DEBUG && DEBUG_TIME_CONTROL
-					time_resend.tv_sec = 0;
-			   		time_resend.tv_nsec = 0;				   		
-			   		get_time (&time_resend);
-#if DEBUG && DEBUG_TIME_ALL
-					printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
-#endif
-	    			printf( "\nHow long to resend a POST request = %lf\n", calc_time_sub (&time_start, &time_resend));
-#endif
-			   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
-			   		num_timeouts++;
-			   		if(num_timeouts == NUM_TIMEOUT)
-			   		{
-			   			printf("Programa fechando, não obteve resposta do servidor\n");
-			   		}
-			   }
-			}
-#if DEBUG && DEBUG_WHILE
-		printf("Saindo While TIMEOUT\n");
+#if DEBUG && DEBUG_PUT
+			printf("Passando While");
 #endif
 			for (i=0; i<n_str; i++)
 			{
 				free(string_sep[i]);
 			}
 			free(string_sep);
+#if DEBUG && DEBUG_PUT
+			printf("Passando While 2");
+#endif
 #if DEBUG && DEBUG_WHILE
 		printf("PASSEI FREE\n");
 #endif

@@ -19,7 +19,7 @@ void lida_erro_id(short int erro, short int argc, char **argv);
 void tempo_agora (char *tempo);
 void get_time (struct timespec *time_now);
 float calc_time_sub (struct timespec *start, struct timespec *stop);
-void send_msg (int fd, struct sockaddr_in *servaddr, char *buf_out, char *buf_out_p, short int *cont_msg, short int *pos, char buf_str[][512]);
+void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int *pos, char buf_str[][512]);
 int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start);
 float calc_time_sub (struct timespec *start, struct timespec *stop);
 void n_sleep (struct timespec *sleep_time);

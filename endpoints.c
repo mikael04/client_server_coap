@@ -37,7 +37,7 @@ void endpoint_setup(void)
 #endif
 
 
-// Variável de tempo (usar no main-posix)
+/* Variável de tempo (usar no main-posix)*/
 void set_var_time (short int tempo)
 {
 	variable.tempo = tempo;
@@ -50,11 +50,9 @@ short int get_var_time ()
 var_cli create_var_time ()
 {
 	var_cli variable;
-	variable.tempo = 5; //Segundos, para testes
+	variable.tempo = 5; /*Segundos, para testes*/
 	return variable;
 }
-
-//
 
 static const coap_endpoint_path_t path_well_known_core = {2, {".well-known", "core"}};
 static int handle_get_well_known_core(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
@@ -73,11 +71,7 @@ static int handle_post_light(coap_rw_buffer_t *scratch, const coap_packet_t *inp
     return coap_make_response(scratch, outpkt, (const uint8_t *)&light, 1, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
-//MIKAEL
-
-//////////////////////////////////////////////////////////////////////////
-// Receber parâmetros, inicialmente serão:
-/*
+/* Receber parâmetros, inicialmente serão:
 Tempo = 15m -> Para testes -> 2s
 */
 
@@ -92,7 +86,6 @@ static int handle_get_time_freq(coap_rw_buffer_t *scratch, const coap_packet_t *
 #endif
 		return coap_make_response(scratch, outpkt, (const uint8_t *)&(time_freq_string), strlen(time_freq_string), id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 	
-    //return coap_make_response(scratch, outpkt, (const uint8_t *)&temperature, 1, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
 static int handle_post_time_freq(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
@@ -118,16 +111,13 @@ static int handle_post_time_freq(coap_rw_buffer_t *scratch, const coap_packet_t 
 #if DEBUG_END && DEBUG_STRUCT_TIME
 		printf("1)Time_freq = %d\n", get_var_time());
 #endif		
-		//printf("1)Time_freq = %d\n", get_var_time());
 		set_var_time(strtol ((char *)inpkt->payload.p, &end, 0));
-		//printf("2)Time_freq = %d\n", get_var_time());
 #if DEBUG_END && DEBUG_STRUCT_TIME
 		printf("2)Time_freq = %d\n", get_var_time());
 #endif
 	}
     return coap_make_response(scratch, outpkt, (const uint8_t *)&(time_freq_string), inpkt->payload.len, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CHANGED, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
-////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 static const coap_endpoint_path_t path_temperature = {2, {"var", "temperature"}};
@@ -141,7 +131,6 @@ static int handle_get_temperature(coap_rw_buffer_t *scratch, const coap_packet_t
 #endif
 		return coap_make_response(scratch, outpkt, (const uint8_t *)&(temperature), strlen(temperature), id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 	
-    //return coap_make_response(scratch, outpkt, (const uint8_t *)&temperature, 1, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CONTENT, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
 static int handle_post_temperature(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
@@ -156,20 +145,14 @@ static int handle_post_temperature(coap_rw_buffer_t *scratch, const coap_packet_
 	else
 	{
 #if DEBUG_END
-		//necessário temperature para devolver para pkt
+		/*necessário temperature para devolver para pkt*/
 		printf(" payload.len = %d\n", inpkt -> payload.len);
-		//char temp_temperature [4];
-		//strncpy (temperature, (char *) inpkt -> payload.p, inpkt -> payload.len);
 		printf("Temperature = %s\n", temperature);
 		strncpy (temperature, "00000", strlen(temperature));
 		printf("1)Temperature = %s\n lenght = %d\n", temperature, strlen(temperature));
 		strncpy (temperature, (char *)inpkt -> payload.p, inpkt -> payload.len);
 		printf("2)Temperature = %s\n lenght = %d\n", temperature, strlen(temperature));
 #endif
-		//strncpy (temperature, "000000000", strlen(temperature));
-		//strncpy (temperature, temp_temperature, strlen(temp_temperature));
-		//printf("2)Temperature = %s , temp_temperature = %s\n", temperature, temp_temperature);
-		//*/
 		FILE * pFile;
 		time_t t = time(NULL);
 		struct tm tm = *localtime(&t);
@@ -181,26 +164,21 @@ static int handle_post_temperature(coap_rw_buffer_t *scratch, const coap_packet_
 			return coap_make_response(scratch, outpkt, NULL, 0, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_BAD_REQUEST, COAP_CONTENTTYPE_TEXT_PLAIN);
 		else if (pFile!=NULL)
 		{
-			//fprintf (pFile, "Temperature_temp = %s\n", temp_temperature);
-			//fprintf (pFile, "Temperature lenght = %d\n", strlen(temp_temperature));
 			fprintf (pFile, "Temperature = ");
 			if (inpkt -> payload.len < 2)
 			{
 				fprintf (pFile, "%c", inpkt -> payload.p [0]);
-				//fprintf (pFile, "%c", inpkt -> payload.p [1]);
 			}
 			else if (inpkt -> payload.len  < 3)
 			{
 				fprintf (pFile, "%c", inpkt -> payload.p [0]);
 				fprintf (pFile, "%c", inpkt -> payload.p [1]);
-				//fprintf (pFile, "%c", inpkt -> payload.p [2]);
 			}
 			else if (inpkt -> payload.len  < 4)
 			{
 				fprintf (pFile, "%c", inpkt -> payload.p [0]);
 				fprintf (pFile, "%c", inpkt -> payload.p [1]);
 				fprintf (pFile, "%c", inpkt -> payload.p [2]);
-				//fprintf (pFile, "%c", inpkt -> payload.p [3]);
 			}
 			else if (inpkt -> payload.len  < 5)
 			{
@@ -208,9 +186,7 @@ static int handle_post_temperature(coap_rw_buffer_t *scratch, const coap_packet_
 				fprintf (pFile, "%c", inpkt -> payload.p [1]);
 				fprintf (pFile, "%c", inpkt -> payload.p [2]);
 				fprintf (pFile, "%c", inpkt -> payload.p [3]);
-				//fprintf (pFile, "%c", temp_temperature[4]);
 			}
-			//fprintf("%s", temp_temperature);
 				
 			fprintf (pFile, " C  \t|   Log - Data: %d / %d Hora: %d :%d : %d\n", tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 			fclose (pFile);
@@ -230,15 +206,10 @@ static int handle_post_temperature(coap_rw_buffer_t *scratch, const coap_packet_
 		{
 			return coap_make_response(scratch, outpkt, NULL, 0, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_BAD_REQUEST, COAP_CONTENTTYPE_TEXT_PLAIN);
 		}
-		
-		//printf("\n4)Temperature = %s\n", temp_temperature);
-		//printf("\nTemperature = %s\n", (char *) inpkt -> payload.p);
 	}
     return coap_make_response(scratch, outpkt, (const uint8_t *)&temperature, inpkt->payload.len, id_hi, id_lo, &inpkt->tok, COAP_RSPCODE_CHANGED, COAP_CONTENTTYPE_TEXT_PLAIN);
 }
 
-
-//
 
 static int handle_put_light(coap_rw_buffer_t *scratch, const coap_packet_t *inpkt, coap_packet_t *outpkt, uint8_t id_hi, uint8_t id_lo)
 {
@@ -277,7 +248,7 @@ const coap_endpoint_t endpoints[] =
     {COAP_METHOD_GET, handle_get_time_freq, &path_time_freq, "ct=7"},
     {COAP_METHOD_PUT, handle_put_light, &path_light, NULL},
     {COAP_METHOD_POST, handle_post_temperature, &path_temperature, "ct=8"},
-    {COAP_METHOD_POST, handle_post_light, &path_light, "ct=4"}, // O QUE É CT?    
+    {COAP_METHOD_POST, handle_post_light, &path_light, "ct=4"}, 
     {COAP_METHOD_POST, handle_post_time_freq, &path_time_freq, "ct=9"},
     {(coap_method_t)0, NULL, NULL, NULL}
 };
@@ -288,7 +259,7 @@ void build_rsp(void)
     const coap_endpoint_t *ep = endpoints;
     int i;
 
-    len--; // Null-terminated string
+    len--; /* Null-terminated string*/
 
     while(NULL != ep->handler)
     {
@@ -300,17 +271,14 @@ void build_rsp(void)
         if (0 < strlen(rsp)) {
             strncat(rsp, ",", len);
             len--;
-			//printf("\nRSP = %s\n", rsp);
         }
 
         strncat(rsp, "<", len);
         len--;
-			//printf("\nRSP = %s\n", rsp);
 
         for (i = 0; i < ep->path->count; i++) {
             strncat(rsp, "/", len);
             len--;
-			//printf("\nRSP = %s\n", rsp);
 
             strncat(rsp, ep->path->elems[i], len);
             len -= strlen(ep->path->elems[i]);
@@ -318,7 +286,6 @@ void build_rsp(void)
 
         strncat(rsp, ">;", len);
         len -= 2;
-			//printf("\nRSP = %s\n", rsp);
 
         strncat(rsp, ep->core_attr, len);
         len -= strlen(ep->core_attr);
@@ -326,3 +293,5 @@ void build_rsp(void)
         ep++;
     }
 }
+
+

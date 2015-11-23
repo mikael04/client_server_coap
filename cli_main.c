@@ -14,15 +14,16 @@
 
 #define PORT 32012
 
-#define PORCENTAGEM 100 //DEFINE PORCENTAGEM DE MENSAGENS ENVIADAS
+#define PORCENTAGEM 100 /*DEFINE PORCENTAGEM DE MENSAGENS ENVIADAS*/
 
 #define STRING_SERV 1
-#define METHOD_PUT 0
-#define METHOD_POST 1
+#define METHOD_PUT 1
+#define METHOD_POST 0
+#define METHOD_POST_PUT 0 /*Setado para testes de PUT (precisa ser setado junto com POST)*/
 
 #define BILLION  1E9
-#define SEC 3 //SLEEP_TIME
-#define NSEC 5E8 //SLEEP_TIME
+#define SEC 3 /*SLEEP_TIME*/
+#define NSEC 5E8 /*SLEEP_TIME*/
 
 #define DEBUG 1
 #define DEBUG_ID 0
@@ -36,6 +37,7 @@
 #define DEBUG_ADD_HDR_TKL 0
 #define DEBUG_ADD_OPTION 0
 #define DEBUG_ADD_PAYLOAD 0
+#define DEBUG_PARAMETROS 0
 #define DEBUG_PRINT_HEADER 0
 #define DEBUG_PRINT_TOKEN 0
 #define DEBUG_PRINT_OPTION 0
@@ -59,27 +61,27 @@
 #define DEBUG_PRINT_CLI_SERV 0
 #define DEBUG_WHILE_ORDER 0
 
- //OPÇÕES
+ /*OPÇÕES*/
 #define SAIR 1
-#define TIME_CONTROL 1//Se for sempre necessário calcular tempo
+#define TIME_CONTROL 1/*Se for sempre necessário calcular tempo*/
 #define TOKEN_ALEATORIO 1
-#define NUM_TIMEOUT 5   //SE SELECIONAR 0, SE TORNA PUT (NAO TENTA REENVIAR)
+#define NUM_TIMEOUT 5   /*SE SELECIONAR 0, SE TORNA PUT (NAO TENTA REENVIAR)*/
 #define NUM_DE_OPCOES 30
 #define MAX_OPTIONS 10
-#define MAX_TAMANHO_TOKEN 10 //char
-#define MAX_TAMANHO_OPTION 24 //char
-#define MAX_TAMANHO_PAYLOAD 64 //char
+#define MAX_TAMANHO_TOKEN 10 /*char*/
+#define MAX_TAMANHO_OPTION 24 /*char*/
+#define MAX_TAMANHO_PAYLOAD 64 /*char*/
 
-#define ACK_WAIT_TIMEOUT_SEC 2
-#define ACK_WAIT_TIMEOUT_USEC 50000
+#define ACK_WAIT_TIMEOUT_SEC 1
+#define ACK_WAIT_TIMEOUT_USEC 0
 
 #define MAX_LEN_OPTION 32
 #define MAX_VALUE_OPTION 64
-#define FUNC_ARG 0 //Recebendo via argumentos no cmd
-#define FUNC_STRINGS 1 //Recebendo via strings digitadas
+#define FUNC_ARG 0 /*Recebendo via argumentos no cmd*/
+#define FUNC_STRINGS 1 /*Recebendo via strings digitadas*/
 
 
-//Definição de erros
+/*Definição de erros*/
 #define erro_argumento_invalido 10
 #define erro_argumento_token_invalido 11
 #define erro_argumento_num_option_invalido 12
@@ -104,7 +106,7 @@
 
 	void lida_erro_monta (short int erro);
 	void lida_erro_add (short int erro);
-	void lida_erro_buffer (short int erro);
+	void lida_erro_send_msg (short int erro);
 	
 	void printf_header (coap_header_t *hdr)
 	{
@@ -143,7 +145,6 @@
 		short int i;
 		for (i=0; i<strlen((char *)buffer); i++)
 		{
-			//if ()
 			printf("buffer [%d] = 0x%02x = %c\n", i, buffer[i], buffer[i]);
 		}
 	}
@@ -152,7 +153,6 @@
 		short int i;
 		for (i=0; i<size; i++)
 		{
-			//if ()
 			printf("%02x ", buffer[i]);
 		}
 	}
@@ -184,7 +184,7 @@ void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int 
 		/*DECIDIR O QUE FAZER SE BUFFER ESTIVER CHEIO*/
 		if(*cont_msg > 7)
 		{
-			lida_erro_buffer (erro_buffer_cheio);
+			lida_erro_send_msg (erro_buffer_cheio);
 		}
 		else
 		{
@@ -249,6 +249,7 @@ void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int 
 #if DEBUG && DEBUG_SEND_MSG
 			printf("rsplen = %d\n", (int) rsplen);
 #endif
+			
 			k=1;
 			while(k==1)
 			{
@@ -282,9 +283,6 @@ void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int 
 					break;
 				}
 				ult_esc++;
-#if DEBUG && DEBUG_SEND_MSG
-				//printf("ult_esc = %d", ult_esc);
-#endif
 				
 			}
 #if DEBUG && DEBUG_SEND_MSG
@@ -292,15 +290,12 @@ void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int 
 #endif
 			
 		}
-				//exit (1);
-}
 
 int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start, FILE *pFile)
 {
 	int i, j;
 	float time_calc = 0;
 #if DEBUG && DEBUG_MSG_RECEIVED
-	//printf("\nIniciando lida_msg_recebida, valores:\n");
 	printf("\nbuf_in = %s\n", buf_in);
 	for (i=0; i<strlen(buf_in); i++)
 	{
@@ -317,26 +312,17 @@ int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, s
 		printf("\npos [%d] = %d,", i, pos[i]);
 		printf("buf_str [%d] = ", i);
 		printf_buffer_m((uint8_t *)buf_str[i], 9);
-		//printf("buf_str [%d] = %s\n", i, buf_str[i]);
-	}
 
 	printf("\ncont_msg = %d\n", *cont_msg);
 #endif
 	for (i=0; i<8; i++)
 	{
-#if DEBUG && DEBUG_MSG_RECEIVED
-		//printf("entrando no for i<8\n");
-#endif
 		if (pos[i] == 1)
 		{
-#if DEBUG && DEBUG_MSG_RECEIVED
-			//printf("entrando no if \n");
-	#endif
 	#if DEBUG && DEBUG_MSG_RECEIVED
 			printf("buf_in[%d] = 0x%02X\n", i, buf_in[0]);
 			printf("buf_str[%d] = 0x%02X\n", i, buf_str[0][0]);
 			printf("buf_in[%d] = 0x%02X\n", i+1, buf_in[1]);
-			//if (buf_in[1] & 0xFF == 0x84)
 			if ((buf_in[1] & 0xFF)== 0x84)
 			{
 				printf("É igual\n");
@@ -348,16 +334,13 @@ int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, s
 			printf("buf_str[%d] = 0x%02X\n", i+1, buf_str[0][1]);
 	#endif
 
-	#if METHOD_POST									//Resposta(6)			
+	#if METHOD_POST									/*Resposta(6)*/			
 			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
 	#endif
 	#if METHOD_PUT
 			if (((buf_in[0] & (0xF0)) == 0x60) && ((buf_in[0] & 0X0F) == (buf_str[i][0] & 0x0F)) && ((buf_in[1] & 0xFF )== 0x44))
 	#endif
 			{
-	#if DEBUG && DEBUG_MSG_RECEIVED
-				//printf("entrando na comparacao \n");
-	#endif
 				int cont = 0;
 				for (j=0; j<(buf_in[0] & 0x0F); j++)
 				{
@@ -386,7 +369,8 @@ int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, s
 		    		printf( "\nHow long to receive ACK in a POST request = %lf\n", time_calc);
 		    		if(pFile!=NULL)
 					{
-						fprintf(pFile, "%lf \n", time_calc);
+						fprintf(pFile, "%lf,", time_calc);
+						fprintf(pFile, "Y;\n");
 					}
 	#endif
 				   		
@@ -430,14 +414,6 @@ float calc_time_sub (struct timespec *start, struct timespec *stop)
             / BILLION;
 	return tempo_decorrido;
 }
-/*float calc_time_sub (struct timespec *inic, struct timespec *stop)
-{
-	float tempo_decorrido;
-	tempo_decorrido = ( stop->tv_sec - start->tv_sec )
-          + ( stop->tv_nsec - start->tv_nsec )
-            / BILLION;
-	return tempo_decorrido;
-}*/
 
 
 void n_sleep (struct timespec *sleep_time)
@@ -449,7 +425,7 @@ void n_sleep (struct timespec *sleep_time)
    	}
 }
 
-//Recebendo mensagem com 00 00, cliente interpreta restante como 0, porém vem payload após 00 00
+/*Recebendo mensagem com 00 00, cliente interpreta restante como 0, porém vem payload após 00 00*/
 short int corrige_len (uint8_t *buffer, short int size)
 {
 		short int i = 0;
@@ -467,17 +443,16 @@ short int corrige_len (uint8_t *buffer, short int size)
 }
 void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 {
-	//uint8_t aux_header[4];
 	uint8_t *p = NULL;
 	uint16_t running_delta = 0;
 	
-	//max len = 16
-	//max delta = 64
+	/*max len = 16*/
+	/*max delta = 64*/
 
-	//Adicionar tempo ao final do pacote
+	/*Adicionar tempo ao final do pacote*/
 	char tempo[100];
 	tempo_agora(tempo);
-	//Precisei diminuir o tamanho do restante da mensagem, erro "stack smashing detected"
+	/*Precisei diminuir o tamanho do restante da mensagem, erro "stack smashing detected"*/
 	
 
 
@@ -489,18 +464,8 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
     buf[2] = pkt->hdr.id[0];
     buf[3] = pkt->hdr.id[1];
     p = buf+4;
-    if (pkt->hdr.tkl == 0x00)
-    {
-    	//printf("Não existe token\n");
-    	//printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
-    }
-    else
-    {
-    	//printf("pkt->hdr.tkl = %d\n",pkt->hdr.tkl);
-    	//printf("Existe token\n");
-    	memcpy(p, pkt->tok.p, pkt->hdr.tkl);
-    	p = p+pkt->hdr.tkl;
-    }
+   	memcpy(p, pkt->tok.p, pkt->hdr.tkl);
+    p = p+pkt->hdr.tkl;
     short int aux = (short int)pkt->numopts;
     for (i=0; i<aux; i++)
     {
@@ -516,7 +481,7 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 		delta = delta - running_delta;
 		running_delta = 2*running_delta + delta;
 		uint8_t len_aux = 0, delta_aux = 0;
-		//Lida com opções, RFC7252, Page 18
+		/*Lida com opções, RFC7252, Page 18*/
 		if(delta>13 && delta<65)
 		{
 			delta_aux = delta-13;
@@ -526,12 +491,12 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 		{
 			lida_erro_monta(erro_delta_15);
 		}
-		else if (delta < 0 || delta >= MAX_VALUE_OPTION) //-> MAX_VALUE_OPTION = 64
+		else if (delta < 0 || delta >= MAX_VALUE_OPTION) /*-> MAX_VALUE_OPTION = 64*/
 		{
 			lida_erro_monta (erro_delta_invalida);
 		}
 		
-		//Lida com opções, RFC7252, Page 19
+		/*Lida com opções, RFC7252, Page 19*/
 		if(len>13 && len<17)
 		{
 			len_aux = len-13;
@@ -541,7 +506,7 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 		{
 			lida_erro_monta(erro_len_15);
 		}
-		else if (len < 0 || len >= MAX_LEN_OPTION) //-> MAX_LEN_OPTION = 16
+		else if (len < 0 || len >= MAX_LEN_OPTION) /*-> MAX_LEN_OPTION = 16*/
 		{
 			lida_erro_monta (erro_len_invalida);
 		}
@@ -585,13 +550,13 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 		memcpy(p, pkt->opts[i].buf.p, pkt->opts[i].buf.len);
 		p = p + pkt->opts[i].buf.len;
     }
-    //Payload
+    /*Payload*/
 
 	*p++ = 0xFF;
 	memcpy(p, pkt->payload.p, pkt->payload.len);
 	p = p+pkt->payload.len;
 
-	//Adicionando tempo
+	/*Adicionando tempo*/
 	memcpy(p, tempo, (int)strlen(tempo));
 	p=p+(int)strlen(tempo);
 
@@ -599,23 +564,26 @@ void monta_pkt (coap_packet_t *pkt, uint8_t *buf)
 
 void monta_header_token (coap_packet_t *pkt, uint8_t *token)
 {
-	//0100 0000 0000 0011 0000 0010 0000 0001
-	pkt->hdr.ver = 	 0x01; // versão 01;
-	pkt->hdr.t = 	 0x00; // code 0 (confirmable);
-	//pkt->hdr.tkl = 	 0x00; //Tamanho do token -> para testes, 0
+	/*0100 0000 0000 0011 0000 0010 0000 0001*/
+	pkt->hdr.ver = 	 0x01; /* versão 01;*/
+	pkt->hdr.t = 	 0x00; /* code 0 (confirmable);*/
+	/*pkt->hdr.tkl = 	 0x00; /*Tamanho do token -> para testes, 0*/
 #if METHOD_POST
-	pkt->hdr.code =  0x02; //request -> 0000 0010 -> POST
+	pkt->hdr.code =  0x02; /*request -> 0000 0010 -> POST*/
 #endif
 #if METHOD_PUT
-	pkt->hdr.code =  0x03; //request -> 0000 0011 -> PUT
+	pkt->hdr.code =  0x03; /*request -> 0000 0011 -> PUT*/
 #endif
-	// GERANDO id aleatoriamente
+#if METHOD_POST_PUT
+	pkt->hdr.code =  0x03; /*request -> 0000 0011 -> PUT*/
+#endif
+	/* GERANDO id aleatoriamente*/
 	srand(time(NULL));
 	short int var_aux = rand()%254;
-	pkt->hdr.id[0] = (uint8_t) var_aux; //0010 -> TESTE
+	pkt->hdr.id[0] = (uint8_t) var_aux; /*0010 -> TESTE*/
 	var_aux = rand()%254;
-	pkt->hdr.id[1] = (uint8_t) var_aux; //0001 -> TESTE
-	// GERANDO TOKEN aleatoriamente
+	pkt->hdr.id[1] = (uint8_t) var_aux; /*0001 -> TESTE*/
+	/* GERANDO TOKEN aleatoriamente*/
 #if TOKEN_ALEATORIO
 	var_aux = rand()%254;
 	token[0] = var_aux;
@@ -659,7 +627,6 @@ void monta_header_token (coap_packet_t *pkt, uint8_t *token)
 	printf("token = %d, var_aux = %d\n", token[4], var_aux);
 #endif
 	pkt->tok.p = token;
-	//printf("token = 0x%02x 0x%02x  0x%02x 0x%02x 0x%02x\n", token[0], token[1], token[2], token[3], token[4]);
 	pkt->tok.len = 5;
 	pkt->hdr.tkl = pkt->tok.len;
 
@@ -673,10 +640,6 @@ void cria_pkt (coap_packet_t *pkt, uint8_t *token)
 	monta_header_token (pkt, token);
 	pkt->numopts = 0;
 }
-/*void add_token_null (coap_packet_t *pkt)
-{
-	//pkt->tok = NULL;
-}*/
 void add_payload (coap_packet_t *pkt, char *payload)
 {
 	if (strlen(payload) > 64)
@@ -705,11 +668,9 @@ void add_option (coap_packet_t *pkt, short int cont_aux, short int *buf_aux_opt_
 #if DEBUG && DEBUG_ADD_OPTION
 		printf("Option num, antes do delta = %d\n", num_op);
 #endif
-		//num_op = num_op - *option_running_delta;
 #if DEBUG && DEBUG_ADD_OPTION
 		printf("Option running delta = %d\n", *option_running_delta);
 #endif
-		//*option_running_delta = num_op + *option_running_delta;
 #if DEBUG && DEBUG_ADD_OPTION
 		printf("Option num - option_running_delta = %d\n", num_op);
 #endif
@@ -724,17 +685,9 @@ void add_option (coap_packet_t *pkt, short int cont_aux, short int *buf_aux_opt_
 }
 void add_token_hdr_tkl (coap_packet_t *pkt, char *token)
 {
-	//HDR_TKL
+	/*HDR_TKL*/
 	short int tkl;
 	tkl = strlen(token);
-#if DEBUG && DEBUG_ADD_HDR_TKL
-	//printf("tkl = %d\n", tkl);
-	//printf("tkl & 0xff = %d\n", (tkl & 0xff));
-	/*CONVERSÃO INT -> UINT8_T //não necessária
-	uint8_t byte1 = (tkl & 0xff);
-	uint8_t byte2 = ((tkl >> 8) & 0xff);
-	printf("byte 1 = %d, byte 2 = %X\n", byte1, byte2);*/
-#endif
 	if (tkl > MAX_TAMANHO_TOKEN)
 	{
 		lida_erro_add(erro_token_excede_tamanho);
@@ -742,11 +695,10 @@ void add_token_hdr_tkl (coap_packet_t *pkt, char *token)
 	else
 	{
 		pkt->hdr.tkl = tkl;
-		//printf("pkt->hdr.tkl = %d\n", pkt->hdr.tkl);
 #if DEBUG && DEBUG_PRINT_HEADER
 	printf_header(&pkt->hdr);
 #endif
-		//HDR_TKL
+		/*HDR_TKL*/
 		pkt->tok.len = strlen (token);
 		pkt->tok.p = (uint8_t *)token;
 #if DEBUG && DEBUG_PRINT_TOKEN
@@ -754,7 +706,7 @@ void add_token_hdr_tkl (coap_packet_t *pkt, char *token)
 #endif
 	}
 }
-void lida_erro_buffer (short int erro)
+void lida_erro_send_msg (short int erro)
 {
 	if(erro == erro_buffer_cheio)
 	{
@@ -860,7 +812,7 @@ short int veri_token (char *argv1)
 	short int i;
 	for (i=0; i<strlen(argv1); i++)
 	{
-		//ASCII 48-57
+		/*ASCII 48-57*/
 		if (argv1[i] < 48 || (argv1[i] > 57 && argv1[i] < 65) || (argv1[i] > 90 && argv1[i] < 97) || argv1[i] > 122)
 		{
 			return 1;
@@ -875,7 +827,7 @@ short int veri_option (char *argv1, char *argv2)
 	short int cont = 0;
 	for (i=0; i<strlen(argv1); i++)
 	{
-		//ASCII 48-57
+		/*ASCII 48-57*/
 		if (argv1[i] < 48 || argv1[i] > 57)
 		{
 			return 1;
@@ -894,7 +846,7 @@ short int veri_payload (char *argv1)
 		return 1;
 	for (i=1; i<strlen(argv1); i++)
 	{
-		//ASCII 48-57
+		/*ASCII 48-57*/
 		if (argv1[i] < 48 || (argv1[i] > 57 && argv1[i] < 65) || (argv1[i] > 90 && argv1[i] < 97) || argv1[i] > 122)
 		{
 			return 1;
@@ -917,10 +869,10 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 {
 	short int j;
 	char *end;
-	short int cont_p = 0; // Mesma coisa do Token abaixo
-	short int cont_op = 0; // Mesma coisa do Token abaixo
-	short int cont_t = 0; // Apenas um token, caso cont_t > 1 erro de argumento;
-	short int option_delta = 0; //Option running delta
+	short int cont_p = 0; /* Mesma coisa do Token abaixo*/
+	short int cont_op = 0; /* Mesma coisa do Token abaixo*/
+	short int cont_t = 0; /* Apenas um token, caso cont_t > 1 erro de argumento;*/
+	short int option_delta = 0; /*Option running delta*/
 #if DEBUG_ID && DEBUG_ID_ARGS
 	for (j=1; j<argc; j++)
 	{
@@ -930,13 +882,6 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 #endif
 
 	j = 1;
-#if SAIR
-	if (0 == (strcmp(argv[0], "sair\0")))
-	{
-		printf("SAINDO\n");
-	}
-	else if(argc < 3)
-#else
 	if (argc <3)
 #endif
 	{
@@ -956,7 +901,6 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 		printf("argv[%d] = %s, argc = %d, j = %d\n", j, argv[j], argc, j);
 		printf("j = %d\n", j);
 #endif
-		//printf("OUT  = %d\n", j);
 		if(strcmp(argv[j], "-t") == 0)
 		{
 #if DEBUG_ID_T && DEBUG
@@ -967,17 +911,14 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 			{
 				lida_erro_id(erro_argumento_mais_de_um_token, argc, argv);
 			}
-			//TODO posso especificar esse erro também
+			/*TODO posso especificar esse erro também*/
 			else if (j+2 > argc)
 			{
-				//printf("erro token 1");
-				//printf("Entrei aqui no j+2 -t\n");
 				lida_erro_id(erro_argumento_token_invalido, argc, argv);
 			}
-			//TODO posso dividir esse if para ter mais detalhes do meu erro;
+			/*TODO posso dividir esse if para ter mais detalhes do meu erro;*/
 			else if(veri_token(argv[j+1]))
 			{
-				//printf("erro token 2");
 				lida_erro_id(erro_argumento_token_invalido, argc, argv);
 			}
 			else
@@ -998,11 +939,7 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 			cont_op++;
 			pkt->numopts++;
 			short int cont_aux = cont_op - 1;
-			if(cont_t == 0)
-			{
-				//add_token_null (&pkt);
-			}
-			//TODO posso especificar esse erro também
+			/*TODO posso especificar esse erro também
 			if (j+3 > argc)
 			{
 				lida_erro_id(erro_argumento_num_option_invalido, argc, argv);
@@ -1013,11 +950,9 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 			}
 			else
 			{
-				//add_option (&pkt, argv[j+1], argv[j+2]);
-				//Converte string option para inteiro;
+				/*Converte string option para inteiro;*/
 				buf_aux_opt_n[cont_op-1] = strtol(argv[j+1], &end, 0);
 #if DEBUG_ID_OP && DEBUG
-				//printf("buf_aux = %d\n", buf_aux_opt_n[cont_op-1]);
 				printf("1op)argv[j] = -op\n");
 				printf("2op)argv[j] = %s, ", argv[j]);
 				printf("3op)argv[j+1] = %s\n", argv[j+1]);
@@ -1030,14 +965,13 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 		else if(strcmp(argv[j], "-p") == 0)
 		{
 			cont_p++;
-			//printf("cont_p++\n");
-			//TODO posso especificar esse erro também
+			/*TODO posso especificar esse erro também*/
 			if (j+2 > argc)
 			{
 				printf("Nao existe arg\n");
 				lida_erro_id(erro_argumento_payload_invalido, argc, argv);
 			}
-			//TODO mesmo do TOKEN, dividir para especificar
+			/*TODO mesmo do TOKEN, dividir para especificar*/
 			else if(cont_p > 1)
 			{
 				printf("Mais de um payload\n");
@@ -1065,7 +999,7 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 			lida_erro_id (erro_comando, argc, argv);
 		}
 	}
-	//monta_pkt ()
+	/*monta_pkt ()*/
 }
 
 void separa_string (char **string_sep, char *buf, short int n_str, short int len)
@@ -1127,11 +1061,15 @@ int main_cli ()
 {
 #if DEBUG && DEBUG_PKT_ARG
 #endif
-	//Tempo
-	struct timespec time_start; //Só para não precisar alterar a função lida_msg
+	/*Tempo*/
+	struct timespec time_start; /*Só para não precisar alterar a função lida_msg*/
 	
 #if METHOD_POST
-	struct timespec time_post, time_resend, time_post_send;
+	#if METHOD_POST_PUT
+		struct timespec time_put;
+	#else
+		struct timespec time_post, time_resend, time_post_send;	
+	#endif
 #else
 #if METHOD_PUT
 	struct timespec time_put;
@@ -1141,7 +1079,7 @@ int main_cli ()
 	get_time(&time_start);
 #endif
 
-	//memset(pkt, 0, sizeof(pkt));
+	/*memset(pkt, 0, sizeof(pkt));*/
 #if DEBUG && DEBUG_PKT_ARG && FUNC_ARG
 	coap_packet_t pkt1, pkt2;
 	uint8_t buffer[512];
@@ -1153,8 +1091,7 @@ int main_cli ()
 	short int cont_arg;
 	cria_pkt (&pkt2);
 #endif
-	/////////////////////////////////////
-	//Salvar logs em txt
+	/*Salvar logs em txt*/
 	FILE * pFile;
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
@@ -1163,17 +1100,19 @@ int main_cli ()
 	snprintf(date,50, "Dia=%d_Metodo=PUT_Porcentagem=%d",tm.tm_mday, PORCENTAGEM);
 #else
 	#if METHOD_POST
-		snprintf(date,50, "Dia=%d_Metodo=POST_Porcentagem=%d",tm.tm_mday, PORCENTAGEM);
+		#if METHOD_POST_PUT
+	snprintf(date,50, "Dia=%d_Metodo=PUT_Porcentagem=%d",tm.tm_mday, PORCENTAGEM);
+		#else
+			snprintf(date,50, "Dia=%d_Metodo=POST_Porcentagem=%d",tm.tm_mday, PORCENTAGEM);
+		#endif
+	
 	#endif
 #endif
 	pFile = fopen (date,"a+");
-	/////////////////////////////////////
+	/*VARIAVEL ALEATORIA DE ENVIO
+	srand (time(NULL)); /*RANDOM FUNCTION*/
 
-	//VARIAVEL ALEATORIA DE ENVIO
-	srand (time(NULL)); //RANDOM FUNCTION
-	/////////////////////////////////////
-
-	//CONEXAO
+	/*CONEXAO*/
 	int fd;
 
 	struct sockaddr_in cliaddr;
@@ -1183,7 +1122,7 @@ int main_cli ()
 	socklen_t szcliaddr = sizeof(cliaddr);
 #endif
 	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_addr.s_addr = inet_addr("192.168.1.13");
+	cliaddr.sin_addr.s_addr = inet_addr("192.168.0.103");
 	cliaddr.sin_port = htons(32011);
 	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 	 	
@@ -1202,13 +1141,17 @@ int main_cli ()
 	printf_buffer_m (buffer, buf_siz));
 #endif
 	
-	//TIMEOUT
+	/*TIMEOUT*/
 #if METHOD_POST
+
+	char buf_str[8][512];
 	struct timeval tv;
 	tv.tv_sec = ACK_WAIT_TIMEOUT_SEC;
    	tv.tv_usec = ACK_WAIT_TIMEOUT_USEC;
-   	short int num_timeouts = 0;
-	char buf_str[8][512];
+   	#if METHOD_POST_PUT
+	#else
+   		short int num_timeouts = 0;
+   	#endif
 #endif
 	printf("\n");
 	char buf_in[512], buf_out[512];
@@ -1220,25 +1163,27 @@ int main_cli ()
 #if DEBUG && DEBUG_VER_BUF
 	char op[3];
 #endif
-	//Variável utilizada para salvar tempo de envio;
+	/*Variável utilizada para salvar tempo de envio;*/
 	float time_calc = 0;
-	//Fim de argumentos
+	/*Fim de argumentos*/
 
 	
-	//int ult_esc = -1;
 #if METHOD_POST
 	short int cont_msg = 0;
 	short int pos[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 #endif
-	//Mensagem
- 	//buffer
+	/*Mensagem*/
+ 	/*buffer*/
 	coap_packet_t pkt3;
 	uint8_t token[5];
 	cria_pkt(&pkt3, token);
 	memset(buf_out, 0x00, 512);
 	memset(buf_in, 0x00, 512);
 #if METHOD_POST
-	num_timeouts = 0;
+	#if METHOD_POST_PUT
+	#else
+		num_timeouts = 0;
+	#endif
 #endif
 
 #if STRING_SERV
@@ -1250,7 +1195,7 @@ int main_cli ()
 	fflush(stdin);
 	printf("Digite a mensagem:\n");
 	fgets(buf_out, 512, stdin);
-	get_time(&time_start); //Tempo -> Após digitar mensagem
+	get_time(&time_start); /*Tempo -> Após digitar mensagem*/
 #if DEBUG && DEBUG_PRINT_CLI_SERV 
 	printf_buffer((uint8_t *)buf_out);
 #endif
@@ -1277,6 +1222,7 @@ int main_cli ()
 	separa_string(string_sep, buf_out, n_str, len);
 
 	identifica_arg (&pkt3, n_str, string_sep, buf_aux_opt_c2, buf_aux_opt_n2);
+#if SAIR	
 	if(0 == strcmp(buf_out, "sair\n\0"))
 	{
 		printf("Saindo 2\n");
@@ -1284,13 +1230,13 @@ int main_cli ()
 		close(fd);
 		return 0;
 	}
+#endif
 	memset(buf_out, 0x00, 512);
 	monta_pkt(&pkt3, (uint8_t *)buf_out);
 
 	printf("Mensagem enviada:\n");
  	printf_buffer_m ((uint8_t *)buf_out, strlen(buf_out));
 	size_t rsplen = strlen(buf_out);
-	//buf_out_p = buf_out_p + strlen(buf_out);
 #if DEBUG && DEBUG_SEND_MSG
 	printf("buf_out [0] = %c, 0x%02X", *buf_out_p, *buf_out_p);
 #endif
@@ -1309,8 +1255,11 @@ int main_cli ()
     else
     {
         printf("\n\nNot sending, simulando erro de comunicação\n\n");
-    }    
-	buffer_msg (buf_out, buf_out_p, &cont_msg,  pos, buf_str);
+    }
+    #if METHOD_POST_PUT
+    #else
+		buffer_msg (buf_out, buf_out_p, &cont_msg,  pos, buf_str);
+	#endif
 #else
 	#if METHOD_PUT
 	if (rand()%100<PORCENTAGEM)
@@ -1337,22 +1286,37 @@ int main_cli ()
 		printf( "\nHow long to send a PUT request = %lf\n", time_calc);
 		if(pFile!=NULL)
 		{
-			fprintf(pFile, "%lf \n", time_calc);
+			fprintf(pFile, "%lf\n", time_calc);
 		}
 	#endif
 	#if METHOD_POST
-		time_post_send.tv_sec = 0;
-   		time_post_send.tv_nsec = 0;				   		
-   		get_time (&time_post_send);
-		#if DEBUG && DEBUG_TIME_ALL
-				printf("time_start.sec = %d, time_start.nsec = %d\ntime_post.sec = %d, time_post.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_post_send.tv_sec, (int)time_post_send.tv_nsec);
-		#endif
-		time_calc = calc_time_sub (&time_start, &time_post_send);
-		printf( "\nHow long to send a POST request = %lf\n", time_calc);
-		if(pFile!=NULL)
-		{
-			fprintf(pFile, "%lf, ", time_calc);
-		}		
+		#if METHOD_POST_PUT /*Implementado para testes de perda de pacote*/
+			time_put.tv_sec = 0;
+	   		time_put.tv_nsec = 0;				   		
+	   		get_time (&time_put);
+			#if DEBUG && DEBUG_TIME_ALL
+					printf("time_start.sec = %d, time_start.nsec = %d\ntime_put.sec = %d, time_put.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_put.tv_sec, (int)time_put.tv_nsec);
+			#endif
+			time_calc = calc_time_sub (&time_start, &time_put);
+			printf( "\nHow long to send a PUT request = %lf\n", time_calc);
+			if(pFile!=NULL)
+			{
+				fprintf(pFile, "%lf", time_calc);
+			}
+		#else /* METHOD POST -> para testes, caso não seja teste remover IF*/
+			time_post_send.tv_sec = 0;
+	   		time_post_send.tv_nsec = 0;				   		
+	   		get_time (&time_post_send);
+			#if DEBUG && DEBUG_TIME_ALL
+					printf("time_start.sec = %d, time_start.nsec = %d\ntime_post.sec = %d, time_post.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_post_send.tv_sec, (int)time_post_send.tv_nsec);
+			#endif
+			time_calc = calc_time_sub (&time_start, &time_post_send);
+			printf( "\nHow long to send a POST request = %lf\n", time_calc);
+			if(pFile!=NULL)
+			{
+				fprintf(pFile, "%lf,", time_calc);
+			}
+		#endif	
 	#endif
 #endif
 
@@ -1361,77 +1325,106 @@ int main_cli ()
 	printf_buffer_str (buf_str, 8);
 #endif
 #if METHOD_POST
-	while (num_timeouts < NUM_TIMEOUT)
-   	{
-	   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+	#if METHOD_POST_PUT
+		if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
 	   	{
 	   		perror("Error");
-	   	}		
+	   	}
 	   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) >= 0)
+		{
+			printf( "\nACK PUT request received\n");
+   			if(pFile!=NULL)
+			{
+				fprintf(pFile, ",Y;\n");
+			}
+	   		
+		}
+		else
+   		{
+   			printf( "\nACK PUT request NOT received\n");
+   			if(pFile!=NULL)
+			{
+				fprintf(pFile, ",N;\n");
+			}
+   		}	
+	#else /*METHOD POST*/
+		while (num_timeouts < NUM_TIMEOUT)
 	   	{
+		   	if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) 
+		   	{
+		   		perror("Error");
+		   	}		
+		   	else if (recvfrom(fd, buf_in, rsplen, 0, (struct sockaddr *)&cliaddr, &szcliaddr) >= 0)
+		   	{
 
-#if DEBUG && DEBUG_WHILE_ORDER
-	   		printf("Entrando no ELSE \n");
-#endif
-	   		if (1 == lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start, pFile))
-	   		{
-	   			num_timeouts = NUM_TIMEOUT;
-	   		}
-#if DEBUG && DEBUG_VER_BUF
-	   		printf("2)");
-	   		printf_buffer_str (buf_str, 8);
-#endif
-#if DEBUG && DEBUG_TIMEOUT
-	   		printf("msg received = ");
-	   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
-	   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
-	   		printf("msg received = ");
-	   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
-	   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
-	   		printf("\n");
-#endif			   		
-	   }
-	   else
-	   {
-	   		printf("Entrando no não recebida msg, resending\n");
-#if DEBUG && DEBUG_TIMEOUT
-	   		printf("buf in = %s\n", buf_in);
-#endif
-	   		if (rand()%100<PORCENTAGEM)
-            {
-                printf("\n\nSending\n\n");
-                sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
-            }
-            else
-		    {
-		        printf("\n\nNot sending, simulando erro de comunicação\n\n");
-		    }
-#if TIME_CONTROL
-			time_resend.tv_sec = 0;
-	   		time_resend.tv_nsec = 0;				   		
-	   		get_time (&time_resend);
-#if DEBUG && DEBUG_TIME_ALL
-			printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
-#endif
-			time_calc = calc_time_sub (&time_start, &time_resend);
-			printf( "\nHow long to resend a POST request = %lf\n", time_calc);
-			if(pFile!=NULL)
-			{
-				fprintf(pFile, "%lf, ", time_calc);
-			}
-#endif
-	   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
-	   		if(pFile!=NULL)
-			{
-				fprintf(pFile, "\n");
-			}
-			num_timeouts++;
-	   		if(num_timeouts == NUM_TIMEOUT)
-	   		{
-	   			printf("Programa fechando, não obteve resposta do servidor\n");
-	   		}
-	   }
-	}
+	#if DEBUG && DEBUG_WHILE_ORDER
+		   		printf("Entrando no ELSE \n");
+	#endif
+		   		if (1 == lida_msg_recebida (buf_in, buf_str, &cont_msg, pos, &time_post, &time_start, pFile))
+		   		{
+		   			num_timeouts = NUM_TIMEOUT;
+		   		}
+	#if DEBUG && DEBUG_VER_BUF
+		   		printf("2)");
+		   		printf_buffer_str (buf_str, 8);
+	#endif
+	#if DEBUG && DEBUG_TIMEOUT
+		   		printf("msg received = ");
+		   		printf("buf in:  %s, len = %d\n", buf_in, strlen(buf_in));
+		   		int len_buf_in = corrige_len((uint8_t *)buf_in, sizeof(buf_in));
+		   		printf("msg received = ");
+		   		printf("buf in:  %s, len = %d\n", buf_in, len_buf_in);
+		   		printf_buffer_m((uint8_t *)buf_in, len_buf_in);
+		   		printf("\n");
+	#endif			   		
+		   }
+		   
+		   else
+		   {
+
+
+		   		printf("Entrando no não recebida msg, resending\n");
+	#if DEBUG && DEBUG_TIMEOUT
+		   		printf("buf in = %s\n", buf_in);
+	#endif
+		   		if (rand()%100<PORCENTAGEM)
+	            {
+	                printf("\n\nSending\n\n");
+	                sendto(fd, buf_out, rsplen, 0, (struct sockaddr *) &cliaddr, sizeof(cliaddr));
+	            }
+	            else
+			    {
+			        printf("\n\nNot sending, simulando erro de comunicação\n\n");
+			    }
+	#if TIME_CONTROL
+				time_resend.tv_sec = 0;
+		   		time_resend.tv_nsec = 0;				   		
+		   		get_time (&time_resend);
+	#if DEBUG && DEBUG_TIME_ALL
+				printf("time_start.sec = %d, time_start.nsec = %d\ntime_resend.sec = %d, time_resend.nsec = %d", (int)time_start.tv_sec, (int)time_start.tv_nsec, (int)time_resend.tv_sec, (int)time_resend.tv_nsec);
+	#endif
+				time_calc = calc_time_sub (&time_start, &time_resend);
+				printf( "\nHow long to resend a POST request = %lf\n", time_calc);
+				if(pFile!=NULL)
+				{
+					fprintf(pFile, "%lf,", time_calc);
+				}
+	#endif
+		   		printf("Timeout reached. Resending segment %d\n", num_timeouts);
+		   		
+				num_timeouts++;
+		   		if(num_timeouts == NUM_TIMEOUT)
+		   		{
+		   			printf("Programa fechando, não obteve resposta do servidor\n");
+		   			if(pFile!=NULL)
+					{
+						fprintf(pFile, "N;");
+						fprintf(pFile, "\n");
+					}
+		   		}
+		   }
+		}
+	#endif
 #endif
 
 	for (i=0; i<n_str; i++)
@@ -1442,6 +1435,6 @@ int main_cli ()
 
 	close(fd);
 	fclose(pFile);
-	//Fim de envio da mensagem
+	/*Fim de envio da mensagem*/
 	return 0;
 }

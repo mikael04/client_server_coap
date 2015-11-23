@@ -79,6 +79,7 @@
 #define MAX_VALUE_OPTION 64
 #define FUNC_ARG 0 /*Recebendo via argumentos no cmd*/
 #define FUNC_STRINGS 1 /*Recebendo via strings digitadas*/
+#define MAIN 1
 
 
 /*Definição de erros*/
@@ -181,115 +182,110 @@ void buffer_msg (char *buf_out, char *buf_out_p, short int *cont_msg, short int 
 #if DEBUG && DEBUG_SEND_MSG_BUFFER
 	printf("buf_out send_msg = %s\n", buf_out);
 #endif
-		/*DECIDIR O QUE FAZER SE BUFFER ESTIVER CHEIO*/
-		if(*cont_msg > 7)
-		{
-			lida_erro_send_msg (erro_buffer_cheio);
-		}
-		else
-		{
+	/*DECIDIR O QUE FAZER SE BUFFER ESTIVER CHEIO*/
+	if (*cont_msg > 7) {
+		lida_erro_send_msg(erro_buffer_cheio);
+	}
+	else {
 #if DEBUG && DEBUG_SEND_MSG
-			printf("123\n");
-			printf("-2 0X%02X ", *(buf_out_p-2));
-			printf("-1 0X%02X ", *(buf_out_p-1));
-			printf(" 0X%02X ", *buf_out_p);
-			printf("+1 0X%02X", *(buf_out_p+1));
-			printf("\n");
-			printf("strlen %d\n", strlen(buf_out));
-			printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
-			printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
-			printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
-			printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
+        printf("123\n");
+        printf("-2 0X%02X ", *(buf_out_p-2));
+        printf("-1 0X%02X ", *(buf_out_p-1));
+        printf(" 0X%02X ", *buf_out_p);
+        printf("+1 0X%02X", *(buf_out_p+1));
+        printf("\n");
+        printf("strlen %d\n", strlen(buf_out));
+        printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
+        printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
+        printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
+        printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
 #endif
 
-			buf_out_p = buf_out_p + strlen(buf_out);
-			*buf_out_p++ = 0x20;
+		buf_out_p = buf_out_p + strlen(buf_out);
+		*buf_out_p++ = 0x20;
 #if DEBUG && DEBUG_SEND_MSG
-			printf("213\n");
-			printf("-2 0X%02X ", *(buf_out_p-2));
-			printf("-1 0X%02X ", *(buf_out_p-1));
-			printf(" 0X%02X ", *buf_out_p);
-			printf("+1 0X%02X", *(buf_out_p+1));
-			printf("\n");
-			printf("strlen %d\n", strlen(buf_out));
-			printf("printf ultima pos -2 = 0x%02X\n", *(buf_out_p-2));
-			printf("printf ultima pos -1 = 0x%02X\n", *(buf_out_p-1));
-			printf("printf ultima pos = 0x%02X\n", *(buf_out_p));
-			printf("printf ultima pos +1 = 0x%02X\n", *(buf_out_p+1));
+        printf("213\n");
+        printf("-2 0X%02X ", *(buf_out_p-2));
+        printf("-1 0X%02X ", *(buf_out_p-1));
+        printf(" 0X%02X ", *buf_out_p);
+        printf("+1 0X%02X", *(buf_out_p+1));
+        printf("\n");
+        printf("strlen %d\n", strlen(buf_out));
+        printf("printf ultima pos -2 = 0x%02X\n", *(buf_out_p-2));
+        printf("printf ultima pos -1 = 0x%02X\n", *(buf_out_p-1));
+        printf("printf ultima pos = 0x%02X\n", *(buf_out_p));
+        printf("printf ultima pos +1 = 0x%02X\n", *(buf_out_p+1));
 #endif
 
 #if DEBUG && DEBUG_SEND_MSG
-			printf("321\n");
-			printf("-2 0X%02X ", *(buf_out_p-2));
-			printf("-1 0X%02X ", *(buf_out_p-1));
-			printf(" 0X%02X ", *buf_out_p);
-			printf("+1 0X%02X", *(buf_out_p+1));
-			printf("\n");
-			printf("strlen %d\n", strlen(buf_out));
-			printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
-			printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
-			printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
-			printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
+        printf("321\n");
+        printf("-2 0X%02X ", *(buf_out_p-2));
+        printf("-1 0X%02X ", *(buf_out_p-1));
+        printf(" 0X%02X ", *buf_out_p);
+        printf("+1 0X%02X", *(buf_out_p+1));
+        printf("\n");
+        printf("strlen %d\n", strlen(buf_out));
+        printf("printf ultima pos -2 = 0x%02X\n", buf_out[strlen(buf_out)-2]);
+        printf("printf ultima pos -1 = 0x%02X\n", buf_out[strlen(buf_out)-1]);
+        printf("printf ultima pos = 0x%02X\n", buf_out[strlen(buf_out)]);
+        printf("printf ultima pos +1 = 0x%02X\n", buf_out[strlen(buf_out)]+1);
 #endif
 #if DEBUG && DEBUG_SEND_MSG
-			printf("\n");
-			printf("buf_out = %s, buf_out len = %d, buf_out size = %d\n", buf_out, strlen((char*)buf_out), sizeof(buf_out));
-			for (m = 0; m<(int)strlen((char*)buf_out); m++)
-			{
-				printf("buf[%d]= 0x%02X\n", m, buf_out[m]);
-			}
-			printf("\n");
-			for (m = 0; m<(int)strlen((char*)buf_out); m++)
-			{
-				printf("%02X ", buf_out[m]);
-			}
-			printf("\n");
+        printf("\n");
+        printf("buf_out = %s, buf_out len = %d, buf_out size = %d\n", buf_out, strlen((char*)buf_out), sizeof(buf_out));
+        for (m = 0; m<(int)strlen((char*)buf_out); m++)
+        {
+            printf("buf[%d]= 0x%02X\n", m, buf_out[m]);
+        }
+        printf("\n");
+        for (m = 0; m<(int)strlen((char*)buf_out); m++)
+        {
+            printf("%02X ", buf_out[m]);
+        }
+        printf("\n");
 #endif
 
 #if DEBUG && DEBUG_SEND_MSG
-			printf("rsplen = %d\n", (int) rsplen);
+		printf("rsplen = %d\n", (int) rsplen);
 #endif
-			
-			k=1;
-			while(k==1)
-			{
+
+		k = 1;
+		while (k == 1) {
 #if DEBUG && DEBUG_SEND_MSG
-				printf("ult_esc = %d", ult_esc);
+			printf("ult_esc = %d", ult_esc);
 #endif
-				for (m = 0; m<8; m++)
-				{
+			for (m = 0; m < 8; m++) {
 #if DEBUG && DEBUG_VER_BUF
-					printf("pos [%d] = %d\n", m, pos[m]);
+				printf("pos [%d] = %d\n", m, pos[m]);
 #endif
-				}
-				if(ult_esc == 7)
-				{
-					ult_esc = -1;
-				}
-				if(pos[ult_esc+k]==0)
-				{
-#if DEBUG && DEBUG_SEND_MSG
-					printf("Ult_esc = %d, cont_msg = %d, pos[ult_esc] = %d\n", ult_esc, *cont_msg, pos[ult_esc+k]);
-#endif
-					ult_esc++;
-					*cont_msg = *cont_msg + 1;;
-					pos[ult_esc] = 1;
-					memcpy(buf_str[ult_esc], buf_out, 512);
-					k++;
-#if DEBUG && DEBUG_SEND_MSG
-					printf("buf = %s \n", (char*)buf_str[ult_esc]);
-					printf("cont_msg = %d\n", *cont_msg);
-#endif
-					break;
-				}
-				ult_esc++;
-				
 			}
+			if (ult_esc == 7) {
+				ult_esc = -1;
+			}
+			if (pos[ult_esc + k] == 0) {
 #if DEBUG && DEBUG_SEND_MSG
-				printf("Saiu do while\n");
+				printf("Ult_esc = %d, cont_msg = %d, pos[ult_esc] = %d\n", ult_esc, *cont_msg, pos[ult_esc+k]);
 #endif
-			
+				ult_esc++;
+				*cont_msg = *cont_msg + 1;;
+				pos[ult_esc] = 1;
+				memcpy(buf_str[ult_esc], buf_out, 512);
+				k++;
+#if DEBUG && DEBUG_SEND_MSG
+                printf("buf = %s \n", (char*)buf_str[ult_esc]);
+                printf("cont_msg = %d\n", *cont_msg);
+#endif
+				break;
+			}
+			ult_esc++;
+
 		}
+#if DEBUG && DEBUG_SEND_MSG
+		printf("Saiu do while\n");
+#endif
+
+	}
+}
 
 int lida_msg_recebida (char *buf_in, char buf_str[][512], short int *cont_msg, short int *pos, struct timespec *time_post, struct timespec *time_start, FILE *pFile)
 {
@@ -883,7 +879,6 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 
 	j = 1;
 	if (argc <3)
-#endif
 	{
 		lida_erro_id(erro_falta_argumento,argc, argv);
 	}
@@ -939,7 +934,7 @@ void identifica_arg (coap_packet_t *pkt, int argc, char **argv, char *buf_aux_op
 			cont_op++;
 			pkt->numopts++;
 			short int cont_aux = cont_op - 1;
-			/*TODO posso especificar esse erro também
+			/*TODO posso especificar esse erro também*/
 			if (j+3 > argc)
 			{
 				lida_erro_id(erro_argumento_num_option_invalido, argc, argv);
@@ -1052,11 +1047,10 @@ short int  conta_espc (char *buf)
 	return cont;
 }
 
-#if DEBUG && DEBUG_PKT_ARG
-int main (int argc, char *argv[])
-#endif
-#if FUNC_STRINGS
-int main_cli ()
+#if MAIN
+	int main (int argc, char *argv[])
+	#else
+	int main_cli ()
 #endif
 {
 #if DEBUG && DEBUG_PKT_ARG
@@ -1122,7 +1116,7 @@ int main_cli ()
 	socklen_t szcliaddr = sizeof(cliaddr);
 #endif
 	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_addr.s_addr = inet_addr("192.168.0.103");
+	cliaddr.sin_addr.s_addr = inet_addr("192.168.1.13");
 	cliaddr.sin_port = htons(32011);
 	bind(fd,(struct sockaddr *)&cliaddr, sizeof(cliaddr));
 	 	

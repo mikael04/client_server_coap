@@ -27,28 +27,28 @@
 #include "cli_main.h"
 
 
-//cli -op 11 var -op 11 temperature -p 1234ddAS
-
 #define PORT_CLI 32015
-//#define PORT_SERV 7891 //EMBARCADO NÃO REENVIA, CLIENTE ENVIARÀ -> não usada
+/*#define PORT_SERV 7891 /*EMBARCADO NÃO REENVIA, CLIENTE ENVIARÀ -> não usada*/
 #define TIME 0
-#define DEBUG_MAIN 1 //Debug Geral
+#define DEBUG_MAIN 1 /*Debug Geral/
 #define DEBUG_SAIR 1
 #define DEBUG_SEND_ANOTHER_SERV 0
 #define DEBUG_FORK 0
-#define DEBUG_TIME 0 //DEBUG com tempo padrão (não obtido do endpoint)
-#define DEBUG_GET_TIME 1 //DEBUG com tempo padrão (não obtido do endpoint)
+#define DEBUG_TIME 0 /*DEBUG com tempo padrão (não obtido do endpoint)*/
+#define DEBUG_GET_TIME 1 /*DEBUG com tempo padrão (não obtido do endpoint)*/
 #define DEBUG_SERV 1
+#define CASA 1
+#define MEGA 0
 
-//DEBUG
-#define TIME_CALL_CLI_SEC 0.0166667*60*6 //0.0166667*60 = 1 segundo
+/*DEBUG
+#define TIME_CALL_CLI_SEC 0.0166667*60*6 /*0.0166667*60 = 1 segundo*/
 #define TIME_CALL_CLI_NSEC 0
-#define NUM_THREADS 2
+#define NUM_THREADS 1
 
 #define DEBUG_TIME_SEC 1
 #define DEBUG_TIME_NSEC 0
 
-#define PORCENTAGEM 60
+#define PORCENTAGEM 100
 
 
 void *thr_func_cli (void *arg)
@@ -78,17 +78,14 @@ void *thr_func_serv_recv (void *arg)
         req.tv_sec = DEBUG_TIME_SEC;
         req.tv_nsec = DEBUG_TIME_NSEC;
 #endif
-#if DEBUG_MAIN & DEBUG_GET_TIME
-    //printf("1) Get = %d\n", get_var_time());
-#endif
 #if DEBUG_MAIN && DEBUG_TIME
         *call_cli->tv_sec = TIME_CALL_CLI_SEC;
         *call_cli->tv_nsec = TIME_CALL_CLI_NSEC;
 #endif
-    srand (time(NULL)); //RANDOM FUNCTION
+    srand (time(NULL)); /*RANDOM FUNCTION*/
     int fd_client;
 
-    //Creating Bufs
+    /*Creating Bufs*/
     uint8_t buf[4096];
     uint8_t scratch_raw[4096];
     coap_rw_buffer_t scratch_buf = {scratch_raw, sizeof(scratch_raw)};
@@ -108,7 +105,7 @@ void *thr_func_serv_recv (void *arg)
     bzero(&servaddr,sizeof(servaddr));
 #ifdef IPV6
     servaddr.sin6_family = AF_INET6;
-    //servaddr.sin6_addr = in6addr_any;
+    servaddr.sin6_addr = in6addr_any;
     servaddr.sin6_port = htons(PORT_CLI);
 #else /* IPV6 */
     servaddr.sin_family = AF_INET;
@@ -192,7 +189,6 @@ int main(int argc, char **argv)
 {
 
     int i;
-    //var_cli variables = create_var_time(); //Criando estrutura que armazena tempo de exec do cli
     pthread_t thr[NUM_THREADS];
     struct timespec call_cli = {0};
 
